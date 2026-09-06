@@ -8,6 +8,7 @@ import SmsSimulator from './components/SmsSimulator';
 import MandiOfficerDashboard from './components/MandiOfficerDashboard';
 import AnalyticsView from './components/AnalyticsView';
 import IvrCallSimulator from './components/IvrCallSimulator';
+import AuthModal from './components/AuthModal';
 import Footer from './components/Footer';
 
 import { 
@@ -19,11 +20,23 @@ import {
 } from './data/mockData';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState({
+    role: 'farmer',
+    name: 'Rameshwar Singh',
+    farmerId: 'FARM-2026-9842',
+    phone: '+91 98123 45678',
+    village: 'Taraori, Karnal',
+    aadhaarLast4: '4821',
+    bankAccount: 'SBI A/C ending 4821',
+    ifsc: 'SBIN0001234',
+    totalLandAcres: 8.5
+  });
+
   const [activeRole, setActiveRole] = useState('farmer');
   const [theme, setTheme] = useState('light');
   const [currentLang, setCurrentLang] = useState('en');
   
-  const [farmerProfile] = useState(INITIAL_FARMER_PROFILE);
+  const [farmerProfile, setFarmerProfile] = useState(INITIAL_FARMER_PROFILE);
   const [mandiList] = useState(MANDI_CENTERS);
   const [cropList] = useState(CROP_LIST);
 
@@ -31,6 +44,7 @@ export default function App() {
   const [smsLogs, setSmsLogs] = useState(INITIAL_SMS_LOGS);
   
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -129,6 +143,8 @@ export default function App() {
         theme={theme}
         setTheme={setTheme}
         ticketCount={tickets.length}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
       {/* Main View Container */}
@@ -208,6 +224,29 @@ export default function App() {
         cropList={cropList}
         farmerProfile={farmerProfile}
         onSlotBooked={handleSlotBooked}
+      />
+
+      {/* Role-Based Authentication Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          if (user.role === 'farmer') {
+            setActiveRole('farmer');
+            setFarmerProfile(prev => ({
+              ...prev,
+              name: user.name,
+              farmerId: user.farmerId,
+              phone: user.phone,
+              village: user.village || prev.village,
+              bankAccount: user.bankAccount || prev.bankAccount,
+              totalLandAcres: user.totalLandAcres || prev.totalLandAcres
+            }));
+          } else {
+            setActiveRole('officer');
+          }
+        }}
       />
     </div>
   );

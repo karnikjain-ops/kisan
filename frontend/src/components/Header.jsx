@@ -1,18 +1,16 @@
 import React from 'react';
 import { 
   Tractor, 
-  Clock, 
-  ShieldCheck, 
-  BarChart3, 
-  MessageSquare, 
-  Globe, 
+  PhoneCall, 
+  Languages, 
   Sun, 
-  Moon,
-  Bell,
-  PhoneCall,
-  Sparkles,
-  Search,
-  Languages
+  Moon, 
+  ShieldCheck,
+  UserCheck,
+  Building2,
+  LogOut,
+  User,
+  ArrowRightLeft
 } from 'lucide-react';
 import { TRANSLATIONS } from '../data/translations';
 
@@ -23,19 +21,28 @@ export default function Header({
   setCurrentLang, 
   theme, 
   setTheme,
-  ticketCount 
+  ticketCount,
+  currentUser = { role: 'farmer', name: 'Rameshwar Singh', aadhaarLast4: '4821' },
+  onOpenAuthModal
 }) {
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
-  const roles = [
-    { id: 'farmer', label: t.navHome },
+  // Separate role-based navigation menus
+  const farmerRoles = [
+    { id: 'farmer', label: '🏠 Farmers Hub & Land Record' },
     { id: 'payment', label: '💳 DBT Payment Ledger' },
+    { id: 'queue', label: '⏱️ Live Mandi Queue Status' },
     { id: 'ivr', label: '📞 Toll-Free Call Booking (155261)' },
-    { id: 'queue', label: t.navQueue },
-    { id: 'officer', label: t.navStaff },
-    { id: 'analytics', label: t.navAnalytics },
-    { id: 'sms', label: t.navSms }
+    { id: 'sms', label: '📱 My SMS Alerts' }
   ];
+
+  const officerRoles = [
+    { id: 'officer', label: '🏬 Mandi Staff Console & Live Roster' },
+    { id: 'analytics', label: '📊 APMC Congestion Analytics Hub' },
+    { id: 'sms', label: '📢 Official SMS Gateway' }
+  ];
+
+  const currentNavItems = currentUser.role === 'farmer' ? farmerRoles : officerRoles;
 
   return (
     <header>
@@ -50,7 +57,7 @@ export default function Header({
           <span>{t.ministry}</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fde047', fontWeight: 700 }}>
             <PhoneCall size={14} />
             <span>{t.helpline}</span>
@@ -64,18 +71,17 @@ export default function Header({
               color: '#ffffff',
               border: '2px solid #ffffff',
               fontWeight: 800,
-              fontSize: '0.88rem',
-              padding: '4px 14px',
+              fontSize: '0.85rem',
+              padding: '4px 12px',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+              gap: '6px'
             }}
           >
-            <Languages size={16} />
-            <span>{currentLang === 'en' ? 'हिंदी में बदलें (Change to Hindi)' : 'Switch to English'}</span>
+            <Languages size={15} />
+            <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
           </button>
 
           <button
@@ -101,11 +107,11 @@ export default function Header({
         </div>
       </div>
 
-      {/* 3. KisanQueue Custom Brand Header */}
+      {/* 3. FasalExpress Brand Header with Role Badging */}
       <div className="gov-brand-header">
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           
-          {/* KisanQueue Custom Logo & Title */}
+          {/* Logo & Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div 
@@ -135,34 +141,52 @@ export default function Header({
             </div>
           </div>
 
-          {/* Language Toggle & Verification Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* User Profile Pill & Role Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            
+            {currentUser.role === 'farmer' ? (
+              <div style={{ background: '#f0fdf4', border: '2px solid #16a34a', padding: '6px 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={22} color="#16a34a" />
+                <div style={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                  <strong style={{ color: '#166534', display: 'block', fontWeight: 800 }}>
+                    {currentUser.name} (Farmer)
+                  </strong>
+                  <span style={{ color: '#475569' }}>Aadhaar: •••• {currentUser.aadhaarLast4 || '4821'}</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#eff6ff', border: '2px solid #2563eb', padding: '6px 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={22} color="#2563eb" />
+                <div style={{ fontSize: '0.8rem', lineHeight: 1.2 }}>
+                  <strong style={{ color: '#1e40af', display: 'block', fontWeight: 800 }}>
+                    {currentUser.name}
+                  </strong>
+                  <span style={{ color: '#475569' }}>Karnal APMC Superintendent</span>
+                </div>
+              </div>
+            )}
+
+            {/* Switch Role / Login Button */}
             <button
-              className="btn-gov-saffron"
-              onClick={() => setCurrentLang(currentLang === 'en' ? 'hi' : 'en')}
-              style={{ fontSize: '0.95rem', padding: '10px 18px', fontWeight: 800 }}
+              onClick={onOpenAuthModal}
+              className="btn-gov-outline"
+              style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
+              title="Switch user role or log in with credentials"
             >
-              <Languages size={18} />
-              {currentLang === 'en' ? '🇮🇳 भाषा: हिंदी' : '🌐 Language: English'}
+              <ArrowRightLeft size={16} />
+              {currentUser.role === 'farmer' ? 'Staff Login' : 'Farmer Login'}
             </button>
 
-            <div style={{ background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '2px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <ShieldCheck size={22} color="#006837" />
-              <div style={{ fontSize: '0.78rem', lineHeight: 1.2 }}>
-                <strong style={{ color: '#092543', display: 'block', fontWeight: 800 }}>FasalExpress Engine</strong>
-                <span style={{ color: '#475569', fontWeight: 600 }}>Real-time Mandi Pass</span>
-              </div>
-            </div>
           </div>
 
         </div>
       </div>
 
-      {/* 4. Main Navy Navigation Bar */}
+      {/* 4. Role-Specific Navigation Bar */}
       <div className="gov-navbar">
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflowX: 'auto' }}>
           <nav style={{ display: 'flex', alignItems: 'center' }}>
-            {roles.map((role) => (
+            {currentNavItems.map((role) => (
               <button
                 key={role.id}
                 onClick={() => setActiveRole(role.id)}
@@ -174,9 +198,14 @@ export default function Header({
           </nav>
 
           <div style={{ paddingRight: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {ticketCount > 0 && (
+            {currentUser.role === 'farmer' && ticketCount > 0 && (
               <span className="gov-badge badge-saffron" style={{ animation: 'pulse-ring 2s infinite' }}>
                 Token Pass Active
+              </span>
+            )}
+            {currentUser.role === 'officer' && (
+              <span className="gov-badge badge-green" style={{ background: '#ffffff', color: '#092543', fontWeight: 800 }}>
+                🏬 APMC Officer Console
               </span>
             )}
           </div>
