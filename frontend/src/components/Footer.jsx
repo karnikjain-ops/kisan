@@ -8,10 +8,10 @@ export default function Footer() {
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           
-          {/* Column 1: KisanQueue Platform */}
+          {/* Column 1: FasalExpress Platform */}
           <div>
             <h4 style={{ color: '#ffffff', fontSize: '0.98rem', fontWeight: 700, marginBottom: '10px' }}>
-              KisanQueue (किसान-क्यू)
+              FasalExpress (फसल एक्सप्रेस)
             </h4>
             <p style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.6 }}>
               Direct Farmer Procurement & Mandi Logistics Management Platform<br />
@@ -28,7 +28,7 @@ export default function Footer() {
               <PhoneCall size={14} /> Toll-Free IVR: 155261 / 1800-115-526
             </p>
             <p style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
-              Email Support: support@kisanqueue.org<br />
+              Email Support: support@fasalexpress.gov.in<br />
               Mon - Sat (8:00 AM to 6:00 PM)
             </p>
           </div>
@@ -51,7 +51,7 @@ export default function Footer() {
         {/* Bottom Credits */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', fontSize: '0.82rem', color: '#cbd5e1' }}>
           <div>
-            Designed & Developed by <strong>Team KisanQueue</strong> for <strong>SIH 2026 Internal Hackathon</strong>
+            Designed & Developed by <strong>Team FasalExpress</strong> for <strong>SIH 2026 Internal Hackathon</strong>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

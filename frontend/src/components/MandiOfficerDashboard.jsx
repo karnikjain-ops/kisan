@@ -88,8 +88,8 @@ export default function MandiOfficerDashboard({
                 type: 'GATE_PAUSE',
                 title: gatePaused ? '🟢 Gate Resumed' : '🔴 Gate Flow Paused',
                 message: gatePaused 
-                  ? 'KisanQueue Alert: Gate entry resumed at Karnal Mandi.' 
-                  : 'KisanQueue Alert: Gate entry temporarily paused for 15 mins due to inner yard traffic.'
+                  ? 'FasalExpress Alert: Gate entry resumed at Karnal Mandi.' 
+                  : 'FasalExpress Alert: Gate entry temporarily paused for 15 mins due to inner yard traffic.'
               });
             }}
             style={{ padding: '14px 24px', fontSize: '1.05rem', fontWeight: 800 }}

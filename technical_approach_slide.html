@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KisanQueue — SIH 2026 Technical Approach Slide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #0b1329;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .slide-wrapper {
+      width: 1333px;
+      height: 750px; /* 16:9 standard slide ratio */
+      background: #ffffff;
+      border-radius: 4px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Slide Header Bar matching SIH template */
+    .slide-header {
+      padding: 16px 36px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #e2e8f0;
+      position: relative;
+    }
+
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 18px;
+      border: 2px solid #7c3aed;
+      border-radius: 9999px;
+      color: #6b21a8;
+      font-weight: 800;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: #faf5ff;
+    }
+
+    .slide-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .sih-logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sih-logo-badge {
+      text-align: right;
+      line-height: 1.15;
+    }
+    .sih-logo-badge .top {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ea580c;
+      letter-spacing: 1px;
+    }
+    .sih-logo-badge .title {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #092543;
+    }
+    .sih-logo-badge .year {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: #006837;
+    }
+
+    /* Main Slide Body 3-Column Grid */
+    .slide-body {
+      flex: 1;
+      padding: 16px 28px;
+      display: grid;
+      grid-template-columns: 1.05fr 1.35fr 1fr;
+      gap: 18px;
+      background: #f8fafc;
+    }
+
+    /* Cards */
+    .panel {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1.5px solid #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 10px 16px;
+      color: #ffffff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-blue { background: #092543; }
+    .header-orange { background: #ea580c; }
+    .header-green { background: #006837; }
+
+    .panel-content {
+      padding: 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: #1e293b;
+    }
+
+    /* Column 1: Tech Stack */
+    .tech-group {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 9px 12px;
+    }
+    .tech-group-title {
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: #092543;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tech-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .tag {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 2px 7px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .tag-blue { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+    .tag-green { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .tag-orange { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+    .tag-purple { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+
+    /* Column 2: Pipeline Methodology */
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-left: 5px solid #092543;
+      border-radius: 8px;
+      padding: 7px 10px;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::after {
+      content: '▼';
+      position: absolute;
+      bottom: -11px;
+      left: 17px;
+      font-size: 0.65rem;
+      color: #ea580c;
+      font-weight: 900;
+      z-index: 2;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #092543;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .step-body {
+      flex: 1;
+    }
+    .step-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .step-desc {
+      font-size: 0.71rem;
+      color: #475569;
+      margin-top: 1px;
+      line-height: 1.25;
+    }
+    .step-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+    .badge-reject { background: #fee2e2; color: #991b1b; }
+    .badge-pass { background: #dcfce7; color: #166534; }
+    .badge-calc { background: #fef3c7; color: #92400e; }
+
+    /* Column 3: Math & Algorithms */
+    .algo-box {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .algo-title {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #006837;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 4px;
+    }
+    .formula {
+      background: #ffffff;
+      border: 1px dashed #cbd5e1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #092543;
+      text-align: center;
+      margin: 4px 0;
+    }
+    .algo-desc {
+      font-size: 0.69rem;
+      color: #475569;
+      line-height: 1.2;
+    }
+
+    .proto-box {
+      margin-top: auto;
+      background: linear-gradient(135deg, #092543 0%, #006837 100%);
+      color: #ffffff;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+    }
+    .proto-box a {
+      color: #fef08a;
+      text-decoration: underline;
+      font-weight: 800;
+      word-break: break-all;
+    }
+
+    /* Bottom Slide Banner */
+    .slide-footer {
+      background: #0284c7;
+      color: #ffffff;
+      padding: 7px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #ea580c;
+      color: #ffffff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 800;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .print-btn:hover {
+      background: #c2410c;
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .slide-wrapper {
+        box-shadow: none;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+      .print-btn {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="slide-wrapper" id="slide">
+    <!-- Header -->
+    <div class="slide-header">
+      <div class="team-badge">FasalExpress (PS 26032)</div>
+      <h1 class="slide-title">TECHNICAL APPROACH</h1>
+      <div class="sih-logo-area">
+        <div class="sih-logo-badge">
+          <div class="top">MINISTRY OF CONSUMER AFFAIRS</div>
+          <div class="title">SMART INDIA HACKATHON</div>
+          <div class="year">2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-Column Content Body -->
+    <div class="slide-body">
+      
+      <!-- COLUMN 1: TECH STACK & INTEGRATION -->
+      <div class="panel">
+        <div class="panel-header header-blue">
+          🛠️ 1. Technologies & Architecture
+        </div>
+        <div class="panel-content">
+          <div class="tech-group">
+            <div class="tech-group-title">🌾 Frontend & Multi-Channel UI</div>
+            <div class="tech-tags">
+              <span class="tag tag-blue">React 19</span>
+              <span class="tag tag-blue">Vite 8</span>
+              <span class="tag tag-blue">High-Contrast UI</span>
+              <span class="tag tag-blue">Multi-Lang (EN/HI)</span>
+              <span class="tag tag-blue">Lucide React</span>
+              <span class="tag tag-orange">IVR Call (DTMF 155261)</span>
+              <span class="tag tag-green">SMS Simulator</span>
+            </div>
+          </div>
+
+          <div class="tech-group">
+            <div class="tech-group-title">⚡ Backend & Execution Engine</div>
+            <div class="tech-tags">
+              <span class="tag tag-green">Node.js v24</span>
+              <span class="tag tag-green">Express.js REST</span>
+              <span class="tag tag-green">CORS</span>
+              <span class="tag tag-green">Micro-Window Sched.</span>
+              <span class="tag tag-green">6-Stage State Machine</span>
+            </div>
+          </div>
+
+          <div class="tech-group">
+            <div class="tech-group-title">🗄️ Relational Data & Persistence</div>
+            <div class="tech-tags">
+              <span class="tag tag-purple">Dual DB Architecture</span>
+              <span class="tag tag-purple">Node:SQLite (Local)</span>
+              <span class="tag tag-purple">Cloud PostgreSQL (Render)</span>
+              <span class="tag tag-purple">9 Relational Tables</span>
+            </div>
+          </div>
+
+          <div class="tech-group">
+            <div class="tech-group-title">🏛️ Government API Mock Adapters</div>
+            <div class="tech-tags">
+              <span class="tag">Khasra/Girdawari Records</span>
+              <span class="tag">UIDAI Aadhaar Verification</span>
+              <span class="tag">PFMS DBT Payment Gateway</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN 2: METHODOLOGY & OPERATIONAL FLOW -->
+      <div class="panel">
+        <div class="panel-header header-orange">
+          🔄 2. Real-World MSP Procurement Flow
+        </div>
+        <div class="panel-content">
+          
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Season Registration (Once/Season)</div>
+              <div class="step-desc">Validated against Khasra land record. Verifies allowable yield quota (20 Qt/acre) & strictly assigns Mandi by revenue zone.</div>
+              <span class="step-badge badge-reject">Rejects Crop/Acreage Mismatch</span>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">Staggered Slot Booking (Per Delivery)</div>
+              <div class="step-desc">Anti-herding limit (max 15 trucks/window). Generates Token #KQ-XXX with assigned 15-min micro gate departure time.</div>
+              <span class="step-badge badge-calc">Micro Departure Windows</span>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Gate QR Check-in & Counter Allocation</div>
+              <div class="step-desc">Officer scans QR slip. Moves truck into active yard FIFO queue with dynamic counter & lane assignment.</div>
+              <span class="step-badge badge-pass">FIFO Gate Entry</span>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">3-Tier Quality & Moisture Analysis</div>
+              <div class="step-desc">Evaluates crop against SeasonConfig: Pass (100% MSP), Marginal Discount (excess moisture deduction), or Fail (Hard Rejection).</div>
+              <span class="step-badge badge-calc">Pass / Discount / Terminal Reject</span>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+              <div class="step-title">6-Stage PFMS/DBT Payment Pipeline</div>
+              <div class="step-desc">Gate Pass → Quality Verified → J-Form Matched → Produce Lifted → PFMS Initiated → Bank Credited with full timestamp transparency.</div>
+              <span class="step-badge badge-pass">Bottleneck-Free DBT Credit</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COLUMN 3: MATHEMATICAL ENGINES & PROTOTYPE -->
+      <div class="panel">
+        <div class="panel-header header-green">
+          📐 3. Mathematical Engines & Prototype
+        </div>
+        <div class="panel-content">
+          
+          <div class="algo-box">
+            <div class="algo-title">⏱️ Live Wait-Time Prediction Engine</div>
+            <div class="formula">WaitMins = ((QueuePos - 1) × AvgMins) / Counters</div>
+            <div class="algo-desc">Dynamically recalculates remaining wait as counters process trucks ahead, factoring yard congestion.</div>
+          </div>
+
+          <div class="algo-box">
+            <div class="algo-title">🌾 3-Tier MSP Deduction Formula</div>
+            <div class="formula">Rate = MSP - ((Moist - Base) × DeductRate)</div>
+            <div class="algo-desc">If Moisture > 14% ceiling → Terminal rejection. If between 12-14% → Statutory deduction applied.</div>
+          </div>
+
+          <div class="proto-box">
+            <div style="font-weight: 800; font-size: 0.85rem; margin-bottom: 4px; color: #fef08a;">
+              🚀 Live Working Prototype
+            </div>
+            <div><strong>Frontend URL:</strong></div>
+            <div style="margin-bottom: 6px;">
+              <a href="https://frontend-three-mu-31.vercel.app/" target="_blank">https://frontend-three-mu-31.vercel.app/</a>
+            </div>
+            <div style="font-size: 0.69rem; line-height: 1.3;">
+              ✅ 13/13 Automated Domain Tests Passing<br>
+              ✅ Farmer Portal, APMC Staff, Live Queue, IVR & SMS
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer matching SIH submission banner -->
+    <div class="slide-footer">
+      <span>@SIH Idea submission - Template</span>
+      <span>PS 26032: Farmer Procurement Scheduling & Status (Dept. of Consumer Affairs)</span>
+      <span>Slide 3</span>
+    </div>
+  </div>
+
+  <button class="print-btn" onclick="window.print()">
+    🖨️ Save as PDF / Print Slide
+  </button>
+
+</body>
+</html>

@@ -164,13 +164,13 @@ export const INITIAL_SMS_LOGS = [
     time: "09:15 AM",
     type: "SLOT_CONFIRMATION",
     title: "✅ Slot Booking Confirmed",
-    message: "KisanQueue: Slot Confirmed for Wheat (45 Qt) at Karnal Central Mandi on 05 Sept, 10:00 AM. Token #KQ-408. Show QR code at Gate 1."
+    message: "FasalExpress: Slot Confirmed for Wheat (45 Qt) at Karnal Central Mandi on 05 Sept, 10:00 AM. Token #KQ-408. Show QR code at Gate 1."
   },
   {
     id: "sms-2",
     time: "09:30 AM",
     type: "TRANSIT_ALERT",
     title: "🚗 Depart for Mandi Alert",
-    message: "KisanQueue Transit Alert: High gate throughput. Depart now from Taraori to arrive comfortably by 10:00 AM. Your queue position is #4."
+    message: "FasalExpress Transit Alert: High gate throughput. Depart now from Taraori to arrive comfortably by 10:00 AM. Your queue position is #4."
   }
 ];

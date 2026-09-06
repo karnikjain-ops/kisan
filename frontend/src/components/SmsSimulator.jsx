@@ -19,16 +19,16 @@ export default function SmsSimulator({ smsLogs, onSendSms }) {
       id: `sms-${Date.now()}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: 'CUSTOM_ALERT',
-      title: '📱 KisanQueue SMS Notification',
+      title: '📱 FasalExpress SMS Notification',
       message: customMsg
     });
     setCustomMsg('');
   };
 
   const presetMessages = [
-    "KisanQueue Alert: Gate turn approaching! Token #KQ-408 proceed to Gate 1 Weighbridge.",
-    "KisanQueue Alert: Harvest quality verified: Grade A Superfine. Payout processing.",
-    "KisanQueue Alert: Payout of Rs. 1,02,375 credited directly to SBI A/C ending 4821 via DBT."
+    "FasalExpress Alert: Gate turn approaching! Token #KQ-408 proceed to Gate 1 Weighbridge.",
+    "FasalExpress Alert: Harvest quality verified: Grade A Superfine. Payout processing.",
+    "FasalExpress Alert: Payout of Rs. 1,02,375 credited directly to SBI A/C ending 4821 via DBT."
   ];
 
   return (
@@ -73,7 +73,7 @@ export default function SmsSimulator({ smsLogs, onSendSms }) {
                 <MessageSquare size={16} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0, color: '#fff' }}>JK-KISANQ</h4>
+                <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: 0, color: '#fff' }}>JK-FASALX</h4>
                 <span style={{ fontSize: '0.68rem', color: '#10b981' }}>Official SMS Gateway</span>
               </div>
             </div>

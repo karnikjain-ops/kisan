@@ -1,11 +1,11 @@
-// Translations for English and Hindi (हिंदी) - KisanQueue Platform
+// Translations for English and Hindi (हिंदी) - FasalExpress Platform
 
 export const TRANSLATIONS = {
   en: {
     govHeader: "Smart India Hackathon 2026 Innovation",
     ministry: "Direct Farmer Procurement & Mandi Logistics Platform",
     helpline: "Farmer Support Helpline: 155261 / 1800-115-526",
-    portalTitle: "KisanQueue (किसान-क्यू)",
+    portalTitle: "FasalExpress (फसल एक्सप्रेस)",
     portalSub: "Direct Farmer Procurement Slot Booking & Real-time Queue Management Platform",
     navHome: "🏠 Home / Farmers Hub",
     navQueue: "⏱️ Live Mandi Queue Status",
@@ -74,7 +74,7 @@ export const TRANSLATIONS = {
     govHeader: "स्मार्ट इंडिया हैकाथॉन 2026 इनोवेशन",
     ministry: "प्रत्यक्ष किसान खरीद एवं मंडी रसद मंच",
     helpline: "किसान सहायता हेल्पलाइन: 155261 / 1800-115-526",
-    portalTitle: "किसान-क्यू (KisanQueue)",
+    portalTitle: "फसल एक्सप्रेस (FasalExpress)",
     portalSub: "प्रत्यक्ष किसान फसल खरीद स्लॉट बुकिंग एवं लाइव टोकन प्रबंधन मंच",
     navHome: "🏠 मुख्य पृष्ठ / किसान हब",
     navQueue: "⏱️ लाइव मंडी कतार स्थिति",

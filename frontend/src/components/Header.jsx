@@ -148,7 +148,7 @@ export default function Header({
             <div style={{ background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '2px solid #cbd5e1', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <ShieldCheck size={22} color="#006837" />
               <div style={{ fontSize: '0.78rem', lineHeight: 1.2 }}>
-                <strong style={{ color: '#092543', display: 'block', fontWeight: 800 }}>KisanQueue Engine</strong>
+                <strong style={{ color: '#092543', display: 'block', fontWeight: 800 }}>FasalExpress Engine</strong>
                 <span style={{ color: '#475569', fontWeight: 600 }}>Real-time Mandi Pass</span>
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function Header({
           ANNOUNCEMENT / घोषणा
         </span>
         <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, fontWeight: 700 }}>
-          📢 <strong>KisanQueue Platform:</strong> Real-time Mandi Slot Booking & Token Registration open for Wheat (₹2,275/Qt) & Mustard (₹5,650/Qt). Dial Toll-Free 155261 for phone booking.
+          📢 <strong>FasalExpress Platform:</strong> Real-time Mandi Slot Booking & Token Registration open for Wheat (₹2,275/Qt) & Mustard (₹5,650/Qt). Dial Toll-Free 155261 for phone booking.
         </div>
       </div>
     </header>

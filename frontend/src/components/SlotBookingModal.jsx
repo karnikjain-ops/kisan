@@ -45,33 +45,55 @@ export default function SlotBookingModal({
     { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '03:30 PM Entry' }
   ];
 
-  const handleBookSlot = () => {
-    const randomTokenNum = Math.floor(400 + Math.random() * 200);
-    const newTicket = {
-      tokenId: `KQ-${randomTokenNum}`,
-      farmerName: farmerProfile.name,
-      farmerId: farmerProfile.farmerId,
-      phone: farmerProfile.phone,
-      mandiName: currentMandiObj.name,
-      mandiId: currentMandiObj.id,
-      cropName: currentCropObj.name,
-      cropCategory: currentCropObj.id,
-      quantityQuintals: parseInt(quantity),
-      mspRate: currentCropObj.mspPerQuintal,
-      estimatedPayout: calculatedPayout,
-      slotDate: slotDate,
-      timeWindow: timeWindow,
-      counterNo: 'Counter #' + Math.floor(1 + Math.random() * 4),
-      status: 'BOOKED',
-      currentStepIndex: 0,
-      queuePosition: Math.floor(3 + Math.random() * 6),
-      estimatedWaitMins: Math.floor(15 + Math.random() * 25),
-      transitDistanceKm: currentMandiObj.distanceKm,
-      recommendedDepartureTime: '09:15 AM',
-      staggeredGateTime: '10:15 AM (15-min Micro Window)',
-      qrCodeData: `KQ-${randomTokenNum}-${farmerProfile.farmerId}`,
-      createdTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+  const handleBookSlot = async () => {
+    let newTicket = null;
+    try {
+      const { bookSlotApi } = await import('../services/api');
+      const res = await bookSlotApi({
+        farmer_id: farmerProfile.farmerId,
+        crop_id: selectedCrop,
+        quantity: parseInt(quantity),
+        mandi_id: selectedMandi,
+        slot_date: slotDate,
+        time_window: timeWindow,
+        booking_channel: 'Web Portal'
+      });
+
+      if (res && res.success && res.ticket) {
+        newTicket = res.ticket;
+      }
+    } catch (e) {
+      console.warn('Backend booking error, using client fallback:', e);
+    }
+
+    if (!newTicket) {
+      const randomTokenNum = Math.floor(400 + Math.random() * 200);
+      newTicket = {
+        tokenId: `KQ-${randomTokenNum}`,
+        farmerName: farmerProfile.name,
+        farmerId: farmerProfile.farmerId,
+        phone: farmerProfile.phone,
+        mandiName: currentMandiObj.name,
+        mandiId: currentMandiObj.id,
+        cropName: currentCropObj.name,
+        cropCategory: currentCropObj.id,
+        quantityQuintals: parseInt(quantity),
+        mspRate: currentCropObj.mspPerQuintal,
+        estimatedPayout: calculatedPayout,
+        slotDate: slotDate,
+        timeWindow: timeWindow,
+        counterNo: 'Counter #' + Math.floor(1 + Math.random() * 4),
+        status: 'BOOKED',
+        currentStepIndex: 0,
+        queuePosition: Math.floor(3 + Math.random() * 6),
+        estimatedWaitMins: Math.floor(15 + Math.random() * 25),
+        transitDistanceKm: currentMandiObj.distanceKm,
+        recommendedDepartureTime: '09:15 AM',
+        staggeredGateTime: '10:15 AM (15-min Micro Window)',
+        qrCodeData: `KQ-${randomTokenNum}-${farmerProfile.farmerId}`,
+        createdTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }
 
     setCreatedTicket(newTicket);
     setStep(4);

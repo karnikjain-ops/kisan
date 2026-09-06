@@ -36,6 +36,27 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Sync initial state from backend if running
+  useEffect(() => {
+    async function syncBackendData() {
+      try {
+        const { fetchFarmerStatus, fetchCentres, fetchNotificationsApi } = await import('./services/api');
+        const statusRes = await fetchFarmerStatus(farmerProfile.farmerId);
+        if (statusRes && statusRes.success && statusRes.tickets && statusRes.tickets.length > 0) {
+          setTickets(statusRes.tickets);
+        }
+
+        const notifications = await fetchNotificationsApi(farmerProfile.farmerId);
+        if (notifications && notifications.length > 0) {
+          setSmsLogs(notifications);
+        }
+      } catch (e) {
+        console.warn('Backend sync failed, using default mock state:', e);
+      }
+    }
+    syncBackendData();
+  }, [farmerProfile.farmerId]);
+
   const handleSlotBooked = (newTicket) => {
     setTickets([newTicket, ...tickets]);
     
@@ -44,14 +65,21 @@ export default function App() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: 'SLOT_CONFIRMATION',
       title: '✅ Slot Booking Confirmed',
-      message: `KisanQueue: Slot Confirmed for ${newTicket.cropName} (${newTicket.quantityQuintals} Qt) at ${newTicket.mandiName} on ${newTicket.slotDate}. Token #${newTicket.tokenId}. Channel: ${newTicket.bookingChannel || 'Web Portal'}`
+      message: `FasalExpress: Slot Confirmed for ${newTicket.cropName} (${newTicket.quantityQuintals} Qt) at ${newTicket.mandiName} on ${newTicket.slotDate}. Token #${newTicket.tokenId}. Channel: ${newTicket.bookingChannel || 'Web Portal'}`
     };
     setSmsLogs([newSms, ...smsLogs]);
   };
 
-  const handleAdvanceQueue = () => {
+  const handleAdvanceQueue = async () => {
     if (!tickets.length) return;
     
+    try {
+      const { advanceQueueApi } = await import('./services/api');
+      await advanceQueueApi(tickets[0]?.mandiId || 'mandi-1');
+    } catch (e) {
+      console.warn('Advance queue API failed:', e);
+    }
+
     setTickets(prev => prev.map(t => {
       const nextStepIndex = (t.currentStepIndex + 1) % 4;
       const nextPosition = Math.max(1, t.queuePosition - 1);
@@ -70,13 +98,24 @@ export default function App() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type: 'QUEUE_ADVANCE',
       title: '⏱️ Queue Update Alert',
-      message: `KisanQueue Alert: Counter advanced. Token #${activeT.tokenId} is now step ${activeT.currentStepIndex + 1}/4.`
+      message: `FasalExpress Alert: Counter advanced. Token #${activeT.tokenId} is now step ${activeT.currentStepIndex + 1}/4.`
     };
     setSmsLogs([newSms, ...smsLogs]);
   };
 
-  const handleSendSms = (smsPayload) => {
+  const handleSendSms = async (smsPayload) => {
     setSmsLogs([smsPayload, ...smsLogs]);
+    try {
+      const { triggerNotificationApi } = await import('./services/api');
+      await triggerNotificationApi({
+        farmer_id: farmerProfile.farmerId,
+        message: smsPayload.message,
+        title: smsPayload.title,
+        type: smsPayload.type
+      });
+    } catch (e) {
+      console.warn('Send SMS API failed:', e);
+    }
   };
 
   return (
