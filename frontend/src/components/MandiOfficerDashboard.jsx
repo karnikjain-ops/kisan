@@ -11,7 +11,12 @@ import {
   Search,
   Bell,
   Lock,
-  Layers
+  Layers,
+  FlaskConical,
+  Scale,
+  X,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 import { TRANSLATIONS } from '../data/translations';
 
@@ -23,6 +28,14 @@ export default function MandiOfficerDashboard({
 }) {
   const [gatePaused, setGatePaused] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTicketForQc, setSelectedTicketForQc] = useState(null);
+
+  // Quality check modal state
+  const [moistureInput, setMoistureInput] = useState(11.5);
+  const [foreignMatterInput, setForeignMatterInput] = useState(0.5);
+  const [grossWeightInput, setGrossWeightInput] = useState(4720);
+  const [tareWeightInput, setTareWeightInput] = useState(220);
+  const [qcSubmittedResult, setQcSubmittedResult] = useState(null);
 
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
@@ -37,6 +50,59 @@ export default function MandiOfficerDashboard({
     { window: '01:00 PM - 03:00 PM', booked: 6, max: 15, isFull: false, subSlot: '15-min micro-window active' },
     { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '15-min micro-window active' }
   ];
+
+  // Real-time calculation of 3 outcomes for modal preview
+  const netWeightKg = Math.max(0, grossWeightInput - tareWeightInput);
+  const netQuintals = netWeightKg / 100;
+  const baseMsp = 2275;
+  let qcOutcome = 'PASS';
+  let discountPerQt = 0;
+  let finalRatePerQt = baseMsp;
+
+  if (moistureInput > 14.0) {
+    qcOutcome = 'FAIL';
+    finalRatePerQt = 0;
+  } else if (moistureInput > 12.0) {
+    qcOutcome = 'DISCOUNT';
+    discountPerQt = Math.round((moistureInput - 12.0) * 25);
+    finalRatePerQt = baseMsp - discountPerQt;
+  }
+  const calculatedTotalPayout = qcOutcome === 'FAIL' ? 0 : Math.round(netQuintals * finalRatePerQt);
+
+  const handleOpenQcModal = (tk) => {
+    setSelectedTicketForQc(tk);
+    setMoistureInput(11.5);
+    setGrossWeightInput(tk.quantityQuintals * 100 + 220);
+    setTareWeightInput(220);
+    setQcSubmittedResult(null);
+  };
+
+  const handleSaveQualityCheck = () => {
+    const result = {
+      outcome: qcOutcome,
+      moisture: moistureInput,
+      discountPerQt,
+      finalRatePerQt,
+      totalPayout: calculatedTotalPayout,
+      receiptNo: `JFORM-2026-${Math.floor(1000 + Math.random() * 9000)}`
+    };
+    setQcSubmittedResult(result);
+
+    // Trigger SMS to Farmer
+    const smsMsg = qcOutcome === 'FAIL'
+      ? `FasalExpress Rejection Alert: Crop rejected for Token #${selectedTicketForQc.tokenId}. Reason: Moisture content ${moistureInput}% exceeds statutory safety ceiling of 14.0%.`
+      : qcOutcome === 'DISCOUNT'
+      ? `FasalExpress Alert: Moisture tested at ${moistureInput}%. FAQ Deduction applied: ₹${discountPerQt}/Qt. Final MSP: ₹${finalRatePerQt}/Qt. Total: ₹${calculatedTotalPayout.toLocaleString('en-IN')}. J-Form #${result.receiptNo}.`
+      : `FasalExpress Alert: Quality Verified (Grade A Superfine). Moisture ${moistureInput}% within 12% limit. Full MSP @ ₹${finalRatePerQt}/Qt. Total: ₹${calculatedTotalPayout.toLocaleString('en-IN')}. J-Form #${result.receiptNo}.`;
+
+    onSendSms({
+      id: `sms-${Date.now()}`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: qcOutcome === 'FAIL' ? 'QUALITY_REJECTION' : 'QUALITY_RESULT',
+      title: qcOutcome === 'FAIL' ? '❌ Produce Rejected' : '🌾 Quality Verified',
+      message: smsMsg
+    });
+  };
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -58,8 +124,12 @@ export default function MandiOfficerDashboard({
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span className="gov-badge badge-green" style={{ background: '#dcfce7', color: '#14532d' }}>🏬 APMC Mandi Staff Console</span>
-            <span style={{ fontSize: '0.9rem', color: '#ffffff', fontWeight: 600 }}>Center: Karnal Central Mandi</span>
+            <span className="gov-badge badge-green" style={{ background: '#dcfce7', color: '#14532d' }}>
+              🏬 APMC Mandi Staff Console
+            </span>
+            <span style={{ fontSize: '0.9rem', color: '#ffffff', fontWeight: 600 }}>
+              Center: Karnal Central Mandi
+            </span>
           </div>
           <h2 style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff' }}>
             {t.staffTitle}
@@ -176,7 +246,7 @@ export default function MandiOfficerDashboard({
                 <th style={{ padding: '14px', fontWeight: 800 }}>{t.cropCol}</th>
                 <th style={{ padding: '14px', fontWeight: 800 }}>Time Window & Micro-Slot</th>
                 <th style={{ padding: '14px', fontWeight: 800 }}>{t.stageCol}</th>
-                <th style={{ padding: '14px', fontWeight: 800 }}>{t.actionCol}</th>
+                <th style={{ padding: '14px', fontWeight: 800 }}>Operational Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -198,16 +268,27 @@ export default function MandiOfficerDashboard({
                     <span style={{ fontSize: '0.8rem', color: 'var(--gov-green)', fontWeight: 700 }}>Staggered: {tk.staggeredGateTime || '10:15 AM'}</span>
                   </td>
                   <td style={{ padding: '16px 14px' }}>
-                    <span className="gov-badge badge-saffron">{tk.status}</span>
+                    <span className={`gov-badge ${tk.status === 'REJECTED' ? 'badge-saffron' : 'badge-green'}`} style={{ background: tk.status === 'REJECTED' ? '#fee2e2' : undefined, color: tk.status === 'REJECTED' ? '#991b1b' : undefined }}>
+                      {tk.status}
+                    </span>
                   </td>
                   <td style={{ padding: '16px 14px' }}>
-                    <button 
-                      className="btn-gov-outline" 
-                      onClick={onAdvanceQueue}
-                      style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                    >
-                      Advance Stage
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button 
+                        className="btn-gov-primary" 
+                        onClick={() => handleOpenQcModal(tk)}
+                        style={{ padding: '6px 12px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <FlaskConical size={14} /> Quality Lab Test
+                      </button>
+                      <button 
+                        className="btn-gov-outline" 
+                        onClick={onAdvanceQueue}
+                        style={{ padding: '6px 12px', fontSize: '0.82rem' }}
+                      >
+                        Advance Lane
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -215,6 +296,178 @@ export default function MandiOfficerDashboard({
           </table>
         </div>
       </div>
+
+      {/* 3-OUTCOME QUALITY TESTING MODAL (Domain Rule Demonstration) */}
+      {selectedTicketForQc && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ padding: '24px', maxWidth: '640px' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '2px solid var(--gov-border)' }}>
+              <div>
+                <span className="gov-badge badge-green" style={{ fontSize: '0.78rem' }}>APMC Statutory Lab Analysis</span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--gov-navy)', marginTop: '4px' }}>
+                  Quality Inspection — Token #{selectedTicketForQc.tokenId}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setSelectedTicketForQc(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Farmer: <strong>{selectedTicketForQc.farmerName}</strong> • Crop: <strong>{selectedTicketForQc.cropName}</strong> ({selectedTicketForQc.quantityQuintals} Quintals declared).
+            </p>
+
+            {/* Quick Testing Preset Chips */}
+            <div style={{ marginBottom: '18px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '6px' }}>
+                Test Simulation Presets:
+              </span>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button 
+                  className="btn-gov-outline" 
+                  onClick={() => { setMoistureInput(11.2); setForeignMatterInput(0.4); }}
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', background: moistureInput === 11.2 ? '#dcfce7' : '#fff' }}
+                >
+                  🟢 Outcome 1: Pass (11.2% Moisture)
+                </button>
+                <button 
+                  className="btn-gov-outline" 
+                  onClick={() => { setMoistureInput(13.0); setForeignMatterInput(0.6); }}
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', background: moistureInput === 13.0 ? '#fef3c7' : '#fff' }}
+                >
+                  🟡 Outcome 2: Marginal Discount (13.0%)
+                </button>
+                <button 
+                  className="btn-gov-outline" 
+                  onClick={() => { setMoistureInput(16.5); setForeignMatterInput(0.8); }}
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', background: moistureInput === 16.5 ? '#fee2e2' : '#fff' }}
+                >
+                  🔴 Outcome 3: Hard Reject (16.5%)
+                </button>
+              </div>
+            </div>
+
+            {/* Form Inputs */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '4px' }}>
+                  Moisture Content (% आर्द्रता)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={moistureInput}
+                  onChange={(e) => setMoistureInput(parseFloat(e.target.value) || 0)}
+                  className="gov-input"
+                  style={{ fontWeight: 800 }}
+                />
+                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Base Limit: 12.0% | Ceiling: 14.0%</span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '4px' }}>
+                  Foreign Matter (% बाह्य पदार्थ)
+                </label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={foreignMatterInput}
+                  onChange={(e) => setForeignMatterInput(parseFloat(e.target.value) || 0)}
+                  className="gov-input"
+                  style={{ fontWeight: 800 }}
+                />
+                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Max Ceiling: 2.0%</span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '4px' }}>
+                  Gross Weight (Kg)
+                </label>
+                <input 
+                  type="number" 
+                  value={grossWeightInput}
+                  onChange={(e) => setGrossWeightInput(parseFloat(e.target.value) || 0)}
+                  className="gov-input"
+                  style={{ fontWeight: 800 }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '4px' }}>
+                  Tare Weight (Kg)
+                </label>
+                <input 
+                  type="number" 
+                  value={tareWeightInput}
+                  onChange={(e) => setTareWeightInput(parseFloat(e.target.value) || 0)}
+                  className="gov-input"
+                  style={{ fontWeight: 800 }}
+                />
+              </div>
+            </div>
+
+            {/* LIVE OUTCOME COMPUTATION CARD */}
+            <div style={{ 
+              padding: '14px', 
+              borderRadius: '10px', 
+              marginBottom: '20px',
+              background: qcOutcome === 'PASS' ? '#f0fdf4' : qcOutcome === 'DISCOUNT' ? '#fffbeb' : '#fef2f2',
+              border: `2px solid ${qcOutcome === 'PASS' ? '#16a34a' : qcOutcome === 'DISCOUNT' ? '#f59e0b' : '#ef4444'}`
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', color: qcOutcome === 'PASS' ? '#166534' : qcOutcome === 'DISCOUNT' ? '#92400e' : '#991b1b' }}>
+                  Evaluation Result: {qcOutcome === 'PASS' ? '✓ PASS (Full MSP)' : qcOutcome === 'DISCOUNT' ? '⚠ MARGINAL (Discounted Payout)' : '✗ REJECTED (Over Ceiling)'}
+                </span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>Net: {netQuintals} Quintals</span>
+              </div>
+
+              {qcOutcome === 'PASS' && (
+                <p style={{ fontSize: '0.82rem', color: '#166534', margin: 0 }}>
+                  Moisture is within statutory base limit of 12.0%. Procured at <strong>100% full MSP rate of ₹{baseMsp}/Qt</strong>.
+                </p>
+              )}
+
+              {qcOutcome === 'DISCOUNT' && (
+                <p style={{ fontSize: '0.82rem', color: '#92400e', margin: 0 }}>
+                  Moisture {moistureInput}% exceeds 12.0% base. Statutory deduction of <strong>₹{discountPerQt}/Qt</strong> applied. Net Rate: <strong>₹{finalRatePerQt}/Qt</strong>.
+                </p>
+              )}
+
+              {qcOutcome === 'FAIL' && (
+                <p style={{ fontSize: '0.82rem', color: '#991b1b', margin: 0 }}>
+                  Moisture {moistureInput}% exceeds APMC safety ceiling of 14.0%. <strong>Produce rejected at gate. Terminal state.</strong>
+                </p>
+              )}
+
+              <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Total Final Payout:</span>
+                <strong style={{ fontSize: '1.3rem', color: qcOutcome === 'FAIL' ? '#ef4444' : '#006837' }}>
+                  ₹{calculatedTotalPayout.toLocaleString('en-IN')}
+                </strong>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn-gov-outline" onClick={() => setSelectedTicketForQc(null)}>
+                Cancel
+              </button>
+              <button 
+                className="btn-gov-saffron" 
+                onClick={handleSaveQualityCheck}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CheckCircle2 size={18} /> Record Result & Generate J-Form
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -29,6 +29,7 @@ export default function Header({
 
   const roles = [
     { id: 'farmer', label: t.navHome },
+    { id: 'payment', label: '💳 DBT Payment Ledger' },
     { id: 'ivr', label: '📞 Toll-Free Call Booking (155261)' },
     { id: 'queue', label: t.navQueue },
     { id: 'officer', label: t.navStaff },

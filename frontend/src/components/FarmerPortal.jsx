@@ -85,6 +85,58 @@ export default function FarmerPortal({
         </button>
       </div>
 
+      {/* DOMAIN RULE: VERIFIED LAND RECORD & JURISDICTIONAL MANDI ALLOCATION */}
+      <div 
+        className="gov-card" 
+        style={{ 
+          padding: '20px 24px', 
+          marginBottom: '28px', 
+          background: '#f8fafc',
+          border: '2px solid #0284c7',
+          borderRadius: '12px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="gov-badge badge-green" style={{ background: '#0284c7', color: '#ffffff', fontSize: '0.8rem' }}>
+              📜 Statutory Flow 1: Land Record & Season Registration
+            </span>
+            <span style={{ fontSize: '0.85rem', color: '#0369a1', fontWeight: 800 }}>
+              Khasra Record: KH-78/14/2 (Girdawari Verified)
+            </span>
+          </div>
+          <span className="gov-badge badge-green" style={{ fontSize: '0.8rem' }}>
+            ✓ Season Registration Approved
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', fontSize: '0.9rem' }}>
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Certified Land Area</span>
+            <p style={{ fontSize: '1.1rem', fontWeight: 900, color: '#092543', margin: '2px 0 0' }}>8.5 Acres</p>
+            <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600 }}>Zone: ZONE-KARNAL-NORTH</span>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Eligible Crop & Season</span>
+            <p style={{ fontSize: '1.1rem', fontWeight: 900, color: '#006837', margin: '2px 0 0' }}>Wheat (गेहूँ) - Rabi 2026</p>
+            <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>Statutory MSP: ₹2,275/Qt</span>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Max Allowable Quota</span>
+            <p style={{ fontSize: '1.1rem', fontWeight: 900, color: '#c2410c', margin: '2px 0 0' }}>170 Quintals Max</p>
+            <span style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 600 }}>Statutory Cap: 20 Qt/Acre</span>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Assigned APMC Mandi</span>
+            <p style={{ fontSize: '1rem', fontWeight: 900, color: '#092543', margin: '2px 0 0' }}>Karnal Central Mandi</p>
+            <span style={{ fontSize: '0.75rem', color: '#006837', fontWeight: 700 }}>🔒 Locked to Revenue Jurisdiction</span>
+          </div>
+        </div>
+      </div>
+
       {/* FARMERS CORNER SERVICE GRID */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>

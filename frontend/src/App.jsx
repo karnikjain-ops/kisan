@@ -139,10 +139,17 @@ export default function App() {
             activeTickets={tickets}
             onOpenBookingModal={() => setIsBookingModalOpen(true)}
             onViewQueueTracker={() => setActiveRole('queue')}
-            onViewPaymentDetails={() => setActiveRole('farmer')}
+            onViewPaymentDetails={() => setActiveRole('payment')}
             mandiList={mandiList}
             cropList={cropList}
             currentLang={currentLang}
+          />
+        )}
+
+        {activeRole === 'payment' && (
+          <PaymentTracker 
+            ticket={tickets[0]}
+            farmerProfile={farmerProfile}
           />
         )}
 

@@ -191,6 +191,11 @@ export default function SlotBookingModal({
                 className="gov-input"
                 style={{ fontSize: '1.4rem', fontWeight: 900 }}
               />
+              {quantity > 170 && (
+                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 800, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={16} /> Warning: 170 Quintals is the statutory yield quota for 8.5 acres (20 Qt/Acre). Excess quantity will be rejected at gate check.
+                </div>
+              )}
               <span style={{ fontSize: '0.95rem', color: '#334155', marginTop: '6px', display: 'block', fontWeight: 700 }}>
                 Estimated Total Value: <strong style={{ color: '#006837', fontSize: '1.2rem' }}>₹{calculatedPayout.toLocaleString('en-IN')}</strong>
               </span>
@@ -198,47 +203,64 @@ export default function SlotBookingModal({
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
               <button className="btn-gov-primary" onClick={() => setStep(2)}>
-                Next: Select Mandi <ChevronRight size={20} />
+                Next: Verify Mandi Jurisdiction <ChevronRight size={20} />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Mandi Selection */}
+        {/* STEP 2: Jurisdictional Mandi Verification (Domain Rule Enforcement) */}
         {step === 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <label style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--gov-navy)' }}>
-              Choose Procurement Center (मंडी केंद्र चुनें)
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block' }}>
+                Assigned Procurement Mandi (आवंटित खरीद केंद्र)
+              </label>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Under statutory MSP rules, your procurement center is strictly assigned based on your verified land revenue zone (<strong>ZONE-KARNAL-NORTH</strong>).
+              </p>
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {mandiList.map((mandi) => {
-                const isSelected = selectedMandi === mandi.id;
+                const isAssigned = mandi.id === 'mandi-1';
                 const capacityPercent = Math.round(((mandi.currentBookedQuintals + parseInt(quantity)) / mandi.dailyCapacityQuintals) * 100);
-                const isFull = capacityPercent > 95;
 
                 return (
                   <div
                     key={mandi.id}
-                    onClick={() => !isFull && setSelectedMandi(mandi.id)}
+                    onClick={() => isAssigned && setSelectedMandi(mandi.id)}
                     style={{
-                      background: isSelected ? '#e6f4ea' : 'var(--gov-bg)',
-                      border: isSelected ? '3px solid #006837' : '2px solid var(--gov-border)',
+                      background: isAssigned ? '#e6f4ea' : '#f8fafc',
+                      border: isAssigned ? '3px solid #006837' : '1.5px dashed #cbd5e1',
                       borderRadius: '12px',
                       padding: '16px',
-                      cursor: isFull ? 'not-allowed' : 'pointer',
-                      opacity: isFull ? 0.6 : 1
+                      cursor: isAssigned ? 'pointer' : 'not-allowed',
+                      opacity: isAssigned ? 1 : 0.6
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>{mandi.name}</h4>
-                        <span style={{ fontSize: '0.88rem', color: '#334155', fontWeight: 600 }}>
-                          📍 {mandi.distanceKm} km away • {mandi.avgProcessingTimeMins} mins avg turnaround
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isAssigned ? '#006837' : '#64748b' }}>
+                            {mandi.name}
+                          </h4>
+                          {isAssigned ? (
+                            <span className="gov-badge badge-green" style={{ fontSize: '0.75rem' }}>
+                              ✓ Officially Assigned Mandi
+                            </span>
+                          ) : (
+                            <span className="gov-badge" style={{ background: '#e2e8f0', color: '#64748b', fontSize: '0.72rem' }}>
+                              🔒 Outside Jurisdiction
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+                          📍 {mandi.distanceKm} km away • {mandi.activeCounters} Counters Active • {mandi.avgProcessingTimeMins} mins avg turnaround
                         </span>
                       </div>
                       <span className={`gov-badge ${capacityPercent > 80 ? 'badge-saffron' : 'badge-green'}`}>
-                        {capacityPercent}% Daily Capacity
+                        {capacityPercent}% Capacity
                       </span>
                     </div>
                   </div>
