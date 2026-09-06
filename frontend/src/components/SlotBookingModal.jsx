@@ -15,6 +15,7 @@ import {
   Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { bookSlotApi } from '../services/api';
 
 export default function SlotBookingModal({ 
   isOpen, 
@@ -48,7 +49,6 @@ export default function SlotBookingModal({
   const handleBookSlot = async () => {
     let newTicket = null;
     try {
-      const { bookSlotApi } = await import('../services/api');
       const res = await bookSlotApi({
         farmer_id: farmerProfile.farmerId,
         crop_id: selectedCrop,

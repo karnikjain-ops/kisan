@@ -1,21 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  ShieldCheck, 
   User, 
   Key, 
-  Phone, 
   Building2, 
   ArrowRight, 
-  CheckCircle2, 
   X, 
-  Lock,
-  Sparkles,
-  Tractor,
-  FileCheck,
-  CreditCard,
-  MapPin,
-  BadgeCheck,
-  AlertCircle
+  Sparkles, 
+  Tractor, 
+  FileCheck, 
+  CreditCard, 
+  BadgeCheck, 
+  AlertCircle 
 } from 'lucide-react';
 import { registerFarmerApi, loginFarmerApi, registerOfficerApi, loginOfficerApi } from '../services/api';
 
@@ -23,13 +18,14 @@ export default function AuthModal({
   isOpen, 
   onClose, 
   onLoginSuccess,
-  onRegisterSuccess
+  onRegisterSuccess,
+  initialTab = 'farmer',
+  initialMode = 'login'
 }) {
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  const [activeTab, setActiveTab] = useState('farmer'); // 'farmer' or 'officer'
+  const [authMode, setAuthMode] = useState(initialMode); // 'login' or 'register'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'farmer' or 'officer'
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   // Farmer login state
   const [farmerPhone, setFarmerPhone] = useState('9812345678');

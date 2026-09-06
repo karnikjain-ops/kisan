@@ -10,7 +10,8 @@ import {
   Building2,
   LogOut,
   User,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Key
 } from 'lucide-react';
 import { TRANSLATIONS } from '../data/translations';
 
@@ -172,7 +173,7 @@ export default function Header({
 
             {/* Login / Register Modal Trigger */}
             <button
-              onClick={onOpenAuthModal}
+              onClick={() => onOpenAuthModal && onOpenAuthModal(currentUser.role)}
               className="btn-gov-primary"
               style={{ padding: '7px 14px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, cursor: 'pointer' }}
               title="Sign in or register a new Farmer or Mandi Officer account"
@@ -183,7 +184,7 @@ export default function Header({
 
             {/* Switch Role Quick Button */}
             <button
-              onClick={onOpenAuthModal}
+              onClick={() => onOpenAuthModal && onOpenAuthModal(currentUser.role === 'farmer' ? 'officer' : 'farmer')}
               className="btn-gov-outline"
               style={{ padding: '7px 12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, cursor: 'pointer' }}
               title="Switch user role"

@@ -19,6 +19,13 @@ import {
   INITIAL_SMS_LOGS 
 } from './data/mockData';
 
+import { 
+  fetchFarmerStatus, 
+  fetchNotificationsApi, 
+  advanceQueueApi, 
+  triggerNotificationApi 
+} from './services/api';
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState({
     role: 'farmer',
@@ -45,6 +52,12 @@ export default function App() {
   
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState('farmer');
+
+  const handleOpenAuthModal = (tab = 'farmer') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -54,7 +67,6 @@ export default function App() {
   useEffect(() => {
     async function syncBackendData() {
       try {
-        const { fetchFarmerStatus, fetchCentres, fetchNotificationsApi } = await import('./services/api');
         const statusRes = await fetchFarmerStatus(farmerProfile.farmerId);
         if (statusRes && statusRes.success && statusRes.tickets && statusRes.tickets.length > 0) {
           setTickets(statusRes.tickets);
@@ -88,7 +100,6 @@ export default function App() {
     if (!tickets.length) return;
     
     try {
-      const { advanceQueueApi } = await import('./services/api');
       await advanceQueueApi(tickets[0]?.mandiId || 'mandi-1');
     } catch (e) {
       console.warn('Advance queue API failed:', e);
@@ -120,7 +131,6 @@ export default function App() {
   const handleSendSms = async (smsPayload) => {
     setSmsLogs([smsPayload, ...smsLogs]);
     try {
-      const { triggerNotificationApi } = await import('./services/api');
       await triggerNotificationApi({
         farmer_id: farmerProfile.farmerId,
         message: smsPayload.message,
@@ -144,7 +154,7 @@ export default function App() {
         setTheme={setTheme}
         ticketCount={tickets.length}
         currentUser={currentUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={handleOpenAuthModal}
       />
 
       {/* Main View Container */}
@@ -228,7 +238,9 @@ export default function App() {
 
       {/* Role-Based Authentication & Registration Modal */}
       <AuthModal 
+        key={`auth-${authModalTab}-${isAuthModalOpen}`}
         isOpen={isAuthModalOpen}
+        initialTab={authModalTab}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
