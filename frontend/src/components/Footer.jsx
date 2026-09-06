@@ -51,7 +51,7 @@ export default function Footer() {
         {/* Bottom Credits */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', fontSize: '0.82rem', color: '#cbd5e1' }}>
           <div>
-            Designed & Developed by <strong>Team FasalExpress</strong> for <strong>SIH 2026 Internal Hackathon</strong>
+            Designed & Developed by <strong>byteForce</strong> for <strong>SIH 2026 Internal Hackathon</strong>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
