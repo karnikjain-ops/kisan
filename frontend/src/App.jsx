@@ -226,7 +226,7 @@ export default function App() {
         onSlotBooked={handleSlotBooked}
       />
 
-      {/* Role-Based Authentication Modal */}
+      {/* Role-Based Authentication & Registration Modal */}
       <AuthModal 
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -240,11 +240,49 @@ export default function App() {
               farmerId: user.farmerId,
               phone: user.phone,
               village: user.village || prev.village,
+              aadhaarLast4: user.aadhaarLast4 || prev.aadhaarLast4,
               bankAccount: user.bankAccount || prev.bankAccount,
+              ifsc: user.ifsc || prev.ifsc,
               totalLandAcres: user.totalLandAcres || prev.totalLandAcres
             }));
           } else {
             setActiveRole('officer');
+          }
+        }}
+        onRegisterSuccess={(user) => {
+          setCurrentUser(user);
+          if (user.role === 'farmer') {
+            setActiveRole('farmer');
+            setFarmerProfile({
+              farmerId: user.farmerId,
+              name: user.name,
+              phone: user.phone,
+              village: user.village || 'Taraori, Karnal',
+              aadhaarLast4: user.aadhaarLast4 || '2049',
+              bankAccount: user.bankAccount || 'SBI A/C ending 2049',
+              ifsc: user.ifsc || 'SBIN0001234',
+              totalLandAcres: user.totalLandAcres || 6.5,
+              landRecord: user.landRecord
+            });
+
+            const welcomeSms = {
+              id: `sms-${Date.now()}`,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              type: 'REGISTRATION_SUCCESS',
+              title: '🎉 PM-KISAN Portal Registration Complete',
+              message: `FasalExpress Welcome: ${user.name} (Farmer ID: ${user.farmerId}) registered successfully with verified Khasra land quota (${user.totalLandAcres} Acres). You can now book your seasonal mandi delivery slot!`
+            };
+            setSmsLogs(prev => [welcomeSms, ...prev]);
+          } else {
+            setActiveRole('officer');
+            const officerSms = {
+              id: `sms-${Date.now()}`,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              type: 'STAFF_ONBOARDED',
+              title: '🏬 APMC Staff Console Activated',
+              message: `Officer ${user.name} (${user.officerId || 'Staff'}) authenticated for ${user.mandiName}. Operational console and live queue roster unlocked.`
+            };
+            setSmsLogs(prev => [officerSms, ...prev]);
           }
         }}
       />

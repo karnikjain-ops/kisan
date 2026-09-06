@@ -142,7 +142,7 @@ export default function Header({
           </div>
 
           {/* User Profile Pill & Role Switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             
             {currentUser.role === 'farmer' ? (
               <div style={{ background: '#f0fdf4', border: '2px solid #16a34a', padding: '6px 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -151,7 +151,9 @@ export default function Header({
                   <strong style={{ color: '#166534', display: 'block', fontWeight: 800 }}>
                     {currentUser.name} (Farmer)
                   </strong>
-                  <span style={{ color: '#475569' }}>Aadhaar: •••• {currentUser.aadhaarLast4 || '4821'}</span>
+                  <span style={{ color: '#475569' }}>
+                    ID: {currentUser.farmerId || 'FARM-9842'} • Aadhaar: •••• {currentUser.aadhaarLast4 || '4821'}
+                  </span>
                 </div>
               </div>
             ) : (
@@ -161,20 +163,33 @@ export default function Header({
                   <strong style={{ color: '#1e40af', display: 'block', fontWeight: 800 }}>
                     {currentUser.name}
                   </strong>
-                  <span style={{ color: '#475569' }}>Karnal APMC Superintendent</span>
+                  <span style={{ color: '#475569' }}>
+                    {currentUser.designation || 'APMC Superintendent'} • {currentUser.officerId || 'APMC Staff'}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Switch Role / Login Button */}
+            {/* Login / Register Modal Trigger */}
+            <button
+              onClick={onOpenAuthModal}
+              className="btn-gov-primary"
+              style={{ padding: '7px 14px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, cursor: 'pointer' }}
+              title="Sign in or register a new Farmer or Mandi Officer account"
+            >
+              <Key size={15} />
+              <span>Login / Register</span>
+            </button>
+
+            {/* Switch Role Quick Button */}
             <button
               onClick={onOpenAuthModal}
               className="btn-gov-outline"
-              style={{ padding: '8px 14px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}
-              title="Switch user role or log in with credentials"
+              style={{ padding: '7px 12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, cursor: 'pointer' }}
+              title="Switch user role"
             >
-              <ArrowRightLeft size={16} />
-              {currentUser.role === 'farmer' ? 'Staff Login' : 'Farmer Login'}
+              <ArrowRightLeft size={15} />
+              {currentUser.role === 'farmer' ? 'Staff Console' : 'Farmer Portal'}
             </button>
 
           </div>

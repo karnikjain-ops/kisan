@@ -13,6 +13,7 @@ import paymentRoutes from './routes/payments.js';
 import adminRoutes from './routes/admin.js';
 import notificationRoutes from './routes/notifications.js';
 import cropRoutes from './routes/crops.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(morgan('dev'));
 seedDatabase();
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/farmers', farmerRoutes);
 app.use('/api/slots', slotRoutes);
 app.use('/api/centres', centreRoutes);

@@ -48,6 +48,117 @@ router.get('/:id/profile', (req, res) => {
 });
 
 /**
+ * POST /api/farmers/onboard
+ * Register a new Farmer beneficiary with verified Land Record (Khasra) and DBT Bank Details
+ */
+router.post('/onboard', (req, res) => {
+  try {
+    const {
+      name,
+      phone,
+      village = 'Taraori, Karnal',
+      district = 'Karnal',
+      state = 'Haryana',
+      aadhaar,
+      bank_account,
+      ifsc,
+      khasra,
+      area_acres,
+      declared_crop = 'wheat',
+      season = 'Rabi 2026',
+      assigned_zone_id = 'ZONE-KARNAL-NORTH'
+    } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Farmer full name and phone number are required.'
+      });
+    }
+
+    // Clean phone and aadhaar
+    const cleanPhone = phone.startsWith('+91') ? phone : `+91 ${phone.replace(/\D/g, '')}`;
+    const cleanAadhaar = aadhaar ? aadhaar.replace(/\D/g, '') : '998877665544';
+    const aadhaarFormatted = `XXXX-XXXX-${cleanAadhaar.slice(-4)}`;
+
+    const farmerId = `FARM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const landId = `LAND-${district.toUpperCase().slice(0, 4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const parsedAcres = parseFloat(area_acres) || 5.0;
+    const createdAt = new Date().toISOString();
+
+    // 1. Insert Farmer
+    run(`
+      INSERT INTO farmers (id, name, phone, village, aadhaar_mock, bank_account_mock, ifsc_mock, land_record_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      farmerId,
+      name.trim(),
+      cleanPhone,
+      village ? `${village}, ${district}` : `${district}, ${state}`,
+      aadhaarFormatted,
+      bank_account || 'SBI A/C ending ' + cleanAadhaar.slice(-4),
+      ifsc || 'SBIN0001234',
+      landId,
+      createdAt
+    ]);
+
+    // 2. Insert Land Record
+    run(`
+      INSERT INTO land_records (id, farmer_id, khasra_mock, area_acres, declared_crop, season, max_yield_quintals_per_acre, assigned_zone_id, verified_bool, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `, [
+      landId,
+      farmerId,
+      khasra || `KH-${Math.floor(10 + Math.random() * 90)}/${Math.floor(1 + Math.random() * 20)}`,
+      parsedAcres,
+      declared_crop.toLowerCase(),
+      season,
+      20.0,
+      assigned_zone_id,
+      createdAt
+    ]);
+
+    // 3. Welcome Notification
+    const notifId = `NOTIF-${Date.now()}`;
+    run(`
+      INSERT INTO notifications (id, farmer_id, channel, type, title, message, sent_at)
+      VALUES (?, ?, 'sms', 'FARMER_ONBOARDED', '✅ PM-KISAN Registration Complete', ?, ?)
+    `, [
+      notifId,
+      farmerId,
+      `Welcome to FasalExpress, ${name}! Your farmer beneficiary profile and Khasra record (${khasra || 'Verified'}) are successfully registered. You are eligible for Rabi 2026 MSP procurement.`,
+      createdAt
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Farmer registered successfully',
+      data: {
+        farmerId,
+        name,
+        phone: cleanPhone,
+        village: `${village}, ${district}`,
+        aadhaarLast4: cleanAadhaar.slice(-4),
+        bankAccount: bank_account || 'SBI A/C ending ' + cleanAadhaar.slice(-4),
+        ifsc: ifsc || 'SBIN0001234',
+        totalLandAcres: parsedAcres,
+        landRecord: {
+          id: landId,
+          khasra: khasra || 'KH-88/14',
+          areaAcres: parsedAcres,
+          declaredCrop: declared_crop,
+          assignedZoneId: assigned_zone_id,
+          verified: true
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
  * POST /api/farmers/register
  * Step 1 Flow: Season Registration (Once per season)
  * Validates against LandRecord (Khasra/Girdawari) and enforces jurisdictional centre assignment
