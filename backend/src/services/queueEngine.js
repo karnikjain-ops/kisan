@@ -70,3 +70,34 @@ export function calculateStaggeredGateTime(timeWindow, bookedCountInWindow) {
   const formattedHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
   return `${formattedHour}:${formattedMin} ${ampm} (15-min Micro Window)`;
 }
+
+/**
+ * Calculates recommended departure time based on gate time and distance
+ * Assuming rural tractor/transit speed of ~25-30 km/h (~2.5 mins per km) + 15 min buffer
+ */
+export function calculateDepartureTime(staggeredGateTime, transitDistanceKm = 12) {
+  const match = staggeredGateTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return '07:30 AM';
+
+  let hour = parseInt(match[1]);
+  let minute = parseInt(match[2]);
+  const ampm = match[3].toUpperCase();
+
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+
+  // Travel time = distance * 2.5 mins + 15 mins buffer
+  const transitMins = Math.round(transitDistanceKm * 2.5 + 15);
+  let totalMinutes = hour * 60 + minute - transitMins;
+
+  if (totalMinutes < 0) totalMinutes += 24 * 60;
+
+  let depHour24 = Math.floor(totalMinutes / 60) % 24;
+  let depMin = totalMinutes % 60;
+  const depAmpm = depHour24 >= 12 ? 'PM' : 'AM';
+  let depHour12 = depHour24 > 12 ? depHour24 - 12 : depHour24 === 0 ? 12 : depHour24;
+
+  const formattedMin = depMin < 10 ? `0${depMin}` : `${depMin}`;
+  return `${depHour12}:${formattedMin} ${depAmpm}`;
+}
+

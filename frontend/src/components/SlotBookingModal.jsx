@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Check, 
@@ -12,10 +12,29 @@ import {
   Sparkles,
   ShieldCheck,
   Lock,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { bookSlotApi } from '../services/api';
+import { bookSlotApi, fetchSlotAvailabilityApi } from '../services/api';
+
+function calculateDepartureTime(gateTime, distanceKm = 12) {
+  const match = (gateTime || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return '07:30 AM';
+  let hour = parseInt(match[1]);
+  let minute = parseInt(match[2]);
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  const transitMins = Math.round(distanceKm * 2.5 + 15);
+  let totalMinutes = hour * 60 + minute - transitMins;
+  if (totalMinutes < 0) totalMinutes += 24 * 60;
+  let depHour24 = Math.floor(totalMinutes / 60) % 24;
+  let depMin = totalMinutes % 60;
+  const depAmpm = depHour24 >= 12 ? 'PM' : 'AM';
+  let depHour12 = depHour24 > 12 ? depHour24 - 12 : depHour24 === 0 ? 12 : depHour24;
+  return `${depHour12}:${depMin < 10 ? '0' : ''}${depMin} ${depAmpm}`;
+}
 
 export default function SlotBookingModal({ 
   isOpen, 
@@ -26,33 +45,66 @@ export default function SlotBookingModal({
   onSlotBooked 
 }) {
   const [step, setStep] = useState(1);
-  const [selectedCrop, setSelectedCrop] = useState(cropList[0].id);
-  const [quantity, setQuantity] = useState(40);
-  const [selectedMandi, setSelectedMandi] = useState(mandiList[0].id);
+  const [selectedCrop, setSelectedCrop] = useState(cropList[0]?.id || 'wheat');
+  const [quantity, setQuantity] = useState(45);
+  const [selectedMandi, setSelectedMandi] = useState(mandiList[0]?.id || 'mandi-1');
   const [slotDate, setSlotDate] = useState('2026-09-05');
-  const [timeWindow, setTimeWindow] = useState('10:00 AM - 01:00 PM');
+  const [timeWindow, setTimeWindow] = useState('08:00 AM - 10:00 AM');
   const [createdTicket, setCreatedTicket] = useState(null);
+  const [isBookingLoading, setIsBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
+
+  const [timeSlotCaps, setTimeSlotCaps] = useState([
+    { window: '08:00 AM - 10:00 AM', booked: 14, max: 15, isFull: false, subSlot: '10:15 AM Entry' },
+    { window: '10:00 AM - 01:00 PM', booked: 15, max: 15, isFull: true, subSlot: 'FULL - Re-routed' },
+    { window: '01:00 PM - 03:00 PM', booked: 6, max: 15, isFull: false, subSlot: '01:45 PM Entry' },
+    { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '03:30 PM Entry' }
+  ]);
+
+  // Fetch real-time slot availability from backend when mandi, date, or open state changes
+  useEffect(() => {
+    async function loadSlotAvailability() {
+      if (!selectedMandi || !slotDate) return;
+      try {
+        const slots = await fetchSlotAvailabilityApi(selectedMandi, slotDate);
+        if (slots && slots.length > 0) {
+          setTimeSlotCaps(slots);
+          // If current timeWindow is full or not present, select first available non-full slot
+          const cur = slots.find(s => s.window === timeWindow);
+          if (!cur || cur.isFull) {
+            const firstAvailable = slots.find(s => !s.isFull);
+            if (firstAvailable) {
+              setTimeWindow(firstAvailable.window);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load slot availability:', e);
+      }
+    }
+    if (isOpen) {
+      loadSlotAvailability();
+    }
+  }, [selectedMandi, slotDate, isOpen]);
 
   if (!isOpen) return null;
 
   const currentCropObj = cropList.find(c => c.id === selectedCrop) || cropList[0];
   const currentMandiObj = mandiList.find(m => m.id === selectedMandi) || mandiList[0];
-  const calculatedPayout = quantity * currentCropObj.mspPerQuintal;
-
-  const timeSlotCaps = [
-    { window: '08:00 AM - 10:00 AM', booked: 14, max: 15, isFull: false, subSlot: '10:15 AM Entry' },
-    { window: '10:00 AM - 01:00 PM', booked: 15, max: 15, isFull: true, subSlot: 'FULL - Re-routed' },
-    { window: '01:00 PM - 03:00 PM', booked: 6, max: 15, isFull: false, subSlot: '01:45 PM Entry' },
-    { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '03:30 PM Entry' }
-  ];
+  const numQuantity = parseFloat(quantity) || 0;
+  const calculatedPayout = numQuantity * (currentCropObj?.mspPerQuintal || 2275);
+  const farmerAcres = farmerProfile?.totalLandAcres || 8.5;
+  const maxAllowableQuota = Math.round(farmerAcres * 20);
 
   const handleBookSlot = async () => {
+    setIsBookingLoading(true);
+    setBookingError(null);
     let newTicket = null;
     try {
       const res = await bookSlotApi({
         farmer_id: farmerProfile.farmerId,
         crop_id: selectedCrop,
-        quantity: parseInt(quantity),
+        quantity: numQuantity || 45,
         mandi_id: selectedMandi,
         slot_date: slotDate,
         time_window: timeWindow,
@@ -61,6 +113,10 @@ export default function SlotBookingModal({
 
       if (res && res.success && res.ticket) {
         newTicket = res.ticket;
+      } else if (res && !res.success) {
+        setBookingError(res.message || 'Slot capacity full. Please choose another time window.');
+        setIsBookingLoading(false);
+        return;
       }
     } catch (e) {
       console.warn('Backend booking error, using client fallback:', e);
@@ -68,6 +124,11 @@ export default function SlotBookingModal({
 
     if (!newTicket) {
       const randomTokenNum = Math.floor(400 + Math.random() * 200);
+      const queuePos = Math.floor(2 + Math.random() * 4);
+      const gateTimeStr = `${timeWindow.split(' - ')[0]} Entry (15-min Micro Window)`;
+      const depTimeStr = calculateDepartureTime(timeWindow.split(' - ')[0], currentMandiObj.distanceKm || 12);
+      const estWait = Math.max(5, Math.round(((queuePos - 1) * (currentMandiObj.avgProcessingTimeMins || 14)) / (currentMandiObj.activeCounters || 6)));
+
       newTicket = {
         tokenId: `KQ-${randomTokenNum}`,
         farmerName: farmerProfile.name,
@@ -77,7 +138,7 @@ export default function SlotBookingModal({
         mandiId: currentMandiObj.id,
         cropName: currentCropObj.name,
         cropCategory: currentCropObj.id,
-        quantityQuintals: parseInt(quantity),
+        quantityQuintals: numQuantity || 45,
         mspRate: currentCropObj.mspPerQuintal,
         estimatedPayout: calculatedPayout,
         slotDate: slotDate,
@@ -85,16 +146,31 @@ export default function SlotBookingModal({
         counterNo: 'Counter #' + Math.floor(1 + Math.random() * 4),
         status: 'BOOKED',
         currentStepIndex: 0,
-        queuePosition: Math.floor(3 + Math.random() * 6),
-        estimatedWaitMins: Math.floor(15 + Math.random() * 25),
+        queuePosition: queuePos,
+        estimatedWaitMins: estWait,
         transitDistanceKm: currentMandiObj.distanceKm,
-        recommendedDepartureTime: '09:15 AM',
-        staggeredGateTime: '10:15 AM (15-min Micro Window)',
+        recommendedDepartureTime: depTimeStr,
+        staggeredGateTime: gateTimeStr,
         qrCodeData: `KQ-${randomTokenNum}-${farmerProfile.farmerId}`,
         createdTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
     }
 
+    // Immediately update local slot capacity state so 14/15 updates to 15/15 FULL
+    setTimeSlotCaps(prev => prev.map(s => {
+      if (s.window === timeWindow) {
+        const newBooked = Math.min(s.max, s.booked + 1);
+        return {
+          ...s,
+          booked: newBooked,
+          isFull: newBooked >= s.max,
+          subSlot: newBooked >= s.max ? 'FULL - Re-routed' : s.subSlot
+        };
+      }
+      return s;
+    }));
+
+    setIsBookingLoading(false);
     setCreatedTicket(newTicket);
     setStep(4);
 
@@ -187,13 +263,23 @@ export default function SlotBookingModal({
               <input 
                 type="number" 
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, e.target.value))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    setQuantity('');
+                  } else {
+                    const parsed = parseInt(val, 10);
+                    setQuantity(isNaN(parsed) ? '' : Math.max(1, parsed));
+                  }
+                }}
+                min="1"
+                placeholder="Enter quantity"
                 className="gov-input"
                 style={{ fontSize: '1.4rem', fontWeight: 900 }}
               />
-              {quantity > 170 && (
+              {numQuantity > maxAllowableQuota && (
                 <div style={{ background: '#fee2e2', color: '#991b1b', padding: '8px 12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 800, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <AlertTriangle size={16} /> Warning: 170 Quintals is the statutory yield quota for 8.5 acres (20 Qt/Acre). Excess quantity will be rejected at gate check.
+                  <AlertTriangle size={16} /> Warning: {maxAllowableQuota} Quintals is the statutory yield quota for {farmerAcres} acres (20 Qt/Acre). Excess quantity will be rejected at gate check.
                 </div>
               )}
               <span style={{ fontSize: '0.95rem', color: '#334155', marginTop: '6px', display: 'block', fontWeight: 700 }}>
@@ -202,56 +288,71 @@ export default function SlotBookingModal({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <button className="btn-gov-primary" onClick={() => setStep(2)}>
-                Next: Verify Mandi Jurisdiction <ChevronRight size={20} />
+              <button 
+                className="btn-gov-primary" 
+                onClick={() => {
+                  if (!quantity || numQuantity < 1) {
+                    setQuantity(45);
+                  }
+                  setStep(2);
+                }}
+              >
+                Next: Select Mandi / Queue <ChevronRight size={20} />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Jurisdictional Mandi Verification (Domain Rule Enforcement) */}
+        {/* STEP 2: Jurisdictional Mandi & Queue Selection */}
         {step === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block' }}>
-                Assigned Procurement Mandi (आवंटित खरीद केंद्र)
+                Select Procurement Mandi & Queue (खरीद केंद्र व कतार चुनें)
               </label>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Under statutory MSP rules, your procurement center is strictly assigned based on your verified land revenue zone (<strong>ZONE-KARNAL-NORTH</strong>).
+                Your default assigned centre is based on your revenue zone (<strong>ZONE-KARNAL-NORTH</strong>). You can select any nearby mandi queue according to your logistical preference.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {mandiList.map((mandi) => {
-                const isAssigned = mandi.id === 'mandi-1';
-                const capacityPercent = Math.round(((mandi.currentBookedQuintals + parseInt(quantity)) / mandi.dailyCapacityQuintals) * 100);
+                const isDefaultAssigned = mandi.id === 'mandi-1';
+                const isSelected = selectedMandi === mandi.id;
+                const capacityPercent = Math.min(100, Math.round(((mandi.currentBookedQuintals + numQuantity) / mandi.dailyCapacityQuintals) * 100));
 
                 return (
                   <div
                     key={mandi.id}
-                    onClick={() => isAssigned && setSelectedMandi(mandi.id)}
+                    onClick={() => setSelectedMandi(mandi.id)}
                     style={{
-                      background: isAssigned ? '#e6f4ea' : '#f8fafc',
-                      border: isAssigned ? '3px solid #006837' : '1.5px dashed #cbd5e1',
+                      background: isSelected ? '#e6f4ea' : '#f8fafc',
+                      border: isSelected ? '3px solid #006837' : '1.5px solid #cbd5e1',
                       borderRadius: '12px',
                       padding: '16px',
-                      cursor: isAssigned ? 'pointer' : 'not-allowed',
-                      opacity: isAssigned ? 1 : 0.6
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isSelected ? '0 2px 8px rgba(0, 104, 55, 0.15)' : 'none'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isAssigned ? '#006837' : '#64748b' }}>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: isSelected ? '#006837' : '#0f172a' }}>
                             {mandi.name}
                           </h4>
-                          {isAssigned ? (
+                          {isDefaultAssigned ? (
                             <span className="gov-badge badge-green" style={{ fontSize: '0.75rem' }}>
-                              ✓ Officially Assigned Mandi
+                              ✓ Officially Assigned
                             </span>
                           ) : (
-                            <span className="gov-badge" style={{ background: '#e2e8f0', color: '#64748b', fontSize: '0.72rem' }}>
-                              🔒 Outside Jurisdiction
+                            <span className="gov-badge badge-blue" style={{ fontSize: '0.72rem' }}>
+                              Alternative Center
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="gov-badge badge-saffron" style={{ fontSize: '0.72rem' }}>
+                              Selected
                             </span>
                           )}
                         </div>
@@ -297,6 +398,12 @@ export default function SlotBookingModal({
             <div style={{ background: '#e0f2fe', border: '2px solid #0284c7', padding: '12px 16px', borderRadius: '10px', fontSize: '0.88rem', color: '#0369a1', fontWeight: 700 }}>
               🛡️ <strong>Smart Anti-Congestion Engine Active:</strong> Each time slot has a hard threshold (15 trucks/window) & 15-minute micro departure times to prevent gate traffic jams.
             </div>
+
+            {bookingError && (
+              <div style={{ background: '#fee2e2', border: '2px solid #ef4444', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} /> {bookingError}
+              </div>
+            )}
 
             <div>
               <label style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--gov-navy)', display: 'block', marginBottom: '8px' }}>
@@ -346,8 +453,21 @@ export default function SlotBookingModal({
               <button className="btn-gov-outline" onClick={() => setStep(2)}>
                 <ChevronLeft size={20} /> Back
               </button>
-              <button className="btn-gov-saffron" onClick={handleBookSlot}>
-                Confirm & Generate Staggered Token <Sparkles size={20} />
+              <button 
+                className="btn-gov-saffron" 
+                onClick={handleBookSlot}
+                disabled={isBookingLoading}
+                style={{ opacity: isBookingLoading ? 0.7 : 1, cursor: isBookingLoading ? 'wait' : 'pointer' }}
+              >
+                {isBookingLoading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" /> Confirming...
+                  </>
+                ) : (
+                  <>
+                    Confirm & Generate Staggered Token <Sparkles size={20} />
+                  </>
+                )}
               </button>
             </div>
           </div>

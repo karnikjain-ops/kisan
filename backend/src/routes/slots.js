@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { queryAll, queryOne, run } from '../db/database.js';
-import { calculateStaggeredGateTime, calculateEstimatedWait } from '../services/queueEngine.js';
+import { calculateStaggeredGateTime, calculateEstimatedWait, calculateDepartureTime } from '../services/queueEngine.js';
 
 const router = Router();
 
@@ -85,6 +85,79 @@ router.get('/', (req, res) => {
     });
 
     res.json({ success: true, count: formatted.length, data: formatted });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/slots/availability
+ * Returns live booking capacity across staggered windows for a given centre and date
+ */
+router.get('/availability', (req, res) => {
+  try {
+    const { centre_id = 'mandi-1', date = '2026-09-05' } = req.query;
+
+    const centre = queryOne('SELECT * FROM procurement_centres WHERE id = ?', [centre_id]) || {
+      id: centre_id,
+      max_trucks_per_slot: 15
+    };
+
+    const maxCapacity = centre.max_trucks_per_slot || 15;
+
+    const isDemoDate = date === '2026-09-05';
+    const defaultSlots = isDemoDate ? [
+      { window: '08:00 AM - 10:00 AM', defaultBooked: 14, defaultSubSlot: '10:15 AM Entry' },
+      { window: '10:00 AM - 01:00 PM', defaultBooked: 15, defaultSubSlot: 'FULL - Re-routed' },
+      { window: '01:00 PM - 03:00 PM', defaultBooked: 6, defaultSubSlot: '01:45 PM Entry' },
+      { window: '03:00 PM - 06:00 PM', defaultBooked: 3, defaultSubSlot: '03:30 PM Entry' }
+    ] : [
+      { window: '08:00 AM - 10:00 AM', defaultBooked: 2, defaultSubSlot: '08:30 AM Entry' },
+      { window: '10:00 AM - 01:00 PM', defaultBooked: 4, defaultSubSlot: '10:45 AM Entry' },
+      { window: '01:00 PM - 03:00 PM', defaultBooked: 3, defaultSubSlot: '01:30 PM Entry' },
+      { window: '03:00 PM - 06:00 PM', defaultBooked: 1, defaultSubSlot: '03:15 PM Entry' }
+    ];
+
+    const mandiOffset = isDemoDate ? (centre_id === 'mandi-2' ? -4 : centre_id === 'mandi-3' ? 2 : 0) : 0;
+
+    const dbBookings = queryAll(`
+      SELECT time_window, COUNT(*) as count
+      FROM slot_bookings
+      WHERE centre_id = ? AND booked_date = ? AND status != 'CANCELLED'
+      GROUP BY time_window
+    `, [centre_id, date]);
+
+    const dbMap = {};
+    for (const b of dbBookings) {
+      dbMap[b.time_window] = b.count;
+    }
+
+    const availability = defaultSlots.map(slot => {
+      let base = Math.max(0, Math.min(maxCapacity, slot.defaultBooked + mandiOffset));
+      if (centre_id === 'mandi-1' && isDemoDate && slot.window === '10:00 AM - 01:00 PM') {
+        base = 11; // 11 baseline + 4 seeded in DB = 15 (FULL)
+      }
+
+      const additionalBooked = dbMap[slot.window] || 0;
+      const totalBooked = Math.min(maxCapacity, base + additionalBooked);
+      const isFull = totalBooked >= maxCapacity;
+      const subSlot = isFull ? 'FULL - Re-routed' : slot.defaultSubSlot;
+
+      return {
+        window: slot.window,
+        booked: totalBooked,
+        max: maxCapacity,
+        isFull,
+        subSlot
+      };
+    });
+
+    res.json({
+      success: true,
+      centre_id,
+      date,
+      slots: availability
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -251,7 +324,18 @@ router.post('/book', (req, res) => {
       WHERE centre_id = ? AND booked_date = ? AND time_window = ? AND status != 'CANCELLED'
     `, [centre.id, reqDate, reqWindow]);
 
-    const bookedCount = existingBookingsCount?.count || 0;
+    const isDemoDate = reqDate === '2026-09-05';
+    const mandiOffset = isDemoDate ? (centre.id === 'mandi-2' ? -4 : centre.id === 'mandi-3' ? 2 : 0) : 0;
+    let baseBooked = 0;
+    if (isDemoDate && centre.id === 'mandi-1') {
+      if (reqWindow === '08:00 AM - 10:00 AM') baseBooked = 14;
+      else if (reqWindow === '10:00 AM - 01:00 PM') baseBooked = 11;
+      else if (reqWindow === '01:00 PM - 03:00 PM') baseBooked = 6;
+      else if (reqWindow === '03:00 PM - 06:00 PM') baseBooked = 3;
+    }
+    baseBooked = Math.max(0, Math.min(centre.max_trucks_per_slot || 15, baseBooked + mandiOffset));
+
+    const bookedCount = baseBooked + (existingBookingsCount?.count || 0);
     if (bookedCount >= centre.max_trucks_per_slot) {
       return res.status(400).json({
         success: false,
@@ -310,8 +394,8 @@ router.post('/book', (req, res) => {
       currentStepIndex: 0,
       queuePosition,
       estimatedWaitMins,
-      transitDistanceKm: 12,
-      recommendedDepartureTime: '09:15 AM',
+      transitDistanceKm: centre.id === 'mandi-1' ? 12 : centre.id === 'mandi-2' ? 24 : 38,
+      recommendedDepartureTime: calculateDepartureTime(staggeredGateTime, centre.id === 'mandi-1' ? 12 : centre.id === 'mandi-2' ? 24 : 38),
       staggeredGateTime,
       bookingChannel: booking_channel,
       qrCodeData,

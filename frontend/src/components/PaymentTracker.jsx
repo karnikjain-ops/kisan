@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   DollarSign, 
   CheckCircle2, 
@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Truck
 } from 'lucide-react';
+import { fetchPaymentByTokenApi } from '../services/api';
 
 const DEFAULT_STAGES = [
   {
@@ -25,7 +26,7 @@ const DEFAULT_STAGES = [
     stage: 'quality_verified',
     label: '2. Quality Tested & Grade Approved',
     hindiLabel: 'गुणवत्ता परीक्षण एवं ग्रेड स्वीकृत',
-    description: 'Moisture (11.2%) & foreign matter lab analysis passed within base ceiling.',
+    description: 'Moisture & foreign matter lab analysis passed within base ceiling.',
     completed: true,
     timestamp: '09:42 AM, 05 Sept 2026'
   },
@@ -33,7 +34,7 @@ const DEFAULT_STAGES = [
     stage: 'paperwork_matched',
     label: '3. J-Form & Weight Slip Matched',
     hindiLabel: 'जे-फार्म एवं वजन पर्ची मिलान',
-    description: 'Official digital J-Form #JFORM-2026-8812 generated and matched to scale slip.',
+    description: 'Official digital J-Form generated and matched to scale slip.',
     completed: true,
     timestamp: '10:10 AM, 05 Sept 2026'
   },
@@ -57,13 +58,38 @@ const DEFAULT_STAGES = [
     stage: 'payment_credited',
     label: '6. Payment Credited via DBT (PFMS)',
     hindiLabel: 'डीबीटी द्वारा बैंक खाते में जमा',
-    description: 'Funds successfully credited into verified SBI Bank A/C ending 4821.',
+    description: 'Funds successfully credited into verified Bank A/C.',
     completed: true,
     timestamp: '12:45 PM, 05 Sept 2026'
   }
 ];
 
 export default function PaymentTracker({ ticket, farmerProfile }) {
+  const [livePayment, setLivePayment] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPayment() {
+      if (!ticket?.tokenId) return;
+      setIsLoading(true);
+      try {
+        const res = await fetchPaymentByTokenApi(ticket.tokenId);
+        if (isMounted && res && res.success && res.data) {
+          setLivePayment(res.data);
+        } else if (isMounted) {
+          setLivePayment(null);
+        }
+      } catch (err) {
+        if (isMounted) setLivePayment(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadPayment();
+    return () => { isMounted = false; };
+  }, [ticket?.tokenId]);
+
   if (!ticket) {
     return (
       <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
@@ -78,23 +104,84 @@ export default function PaymentTracker({ ticket, farmerProfile }) {
     );
   }
 
-  const weighbridge = ticket.weighbridgeDetails || {
-    grossWeightKg: 4720,
+  // Check if ticket is still awaiting inspection or already evaluated
+  const isPendingInspection = !livePayment && !ticket.weighbridgeDetails && ticket.status !== 'COMPLETED';
+
+  const weighbridge = livePayment ? {
+    grossWeightKg: livePayment.gross_weight_kg || (ticket.quantityQuintals * 100 + 220),
+    tareWeightKg: livePayment.tare_weight_kg || 220,
+    netWeightKg: ((livePayment.gross_weight_kg || (ticket.quantityQuintals * 100 + 220)) - (livePayment.tare_weight_kg || 220)),
+    moisturePercent: livePayment.moisture_pct ? `${livePayment.moisture_pct}%` : '11.2%',
+    qualityGrade: livePayment.quality_grade || 'Grade A Superfine',
+    receiptNo: livePayment.receipt_no || 'JFORM-PENDING'
+  } : (ticket.weighbridgeDetails || {
+    grossWeightKg: (ticket.quantityQuintals || 45) * 100 + 220,
     tareWeightKg: 220,
-    netWeightKg: 4500,
+    netWeightKg: (ticket.quantityQuintals || 45) * 100,
     moisturePercent: '11.2%',
     qualityGrade: 'Grade A Superfine',
     receiptNo: 'JFORM-2026-8812'
-  };
+  });
 
-  const payment = ticket.paymentDetails || {
-    dbtStatus: 'SUCCESS',
-    txnRef: 'DBT-2026-991823',
+  const payment = livePayment ? {
+    dbtStatus: livePayment.current_stage === 'payment_credited' ? 'SUCCESS' : 'IN_PROGRESS',
+    txnRef: livePayment.dbt_ref || 'DBT-PENDING',
+    amount: livePayment.amount || ticket.estimatedPayout,
+    settlementDate: livePayment.settlement_date || 'Pending Dispatch',
+    stageHistory: livePayment.stage_history
+  } : (ticket.paymentDetails || {
+    dbtStatus: isPendingInspection ? 'AWAITING_QC' : 'SUCCESS',
+    txnRef: isPendingInspection ? 'N/A (Pending QC)' : 'DBT-2026-991823',
     amount: ticket.estimatedPayout,
-    settlementDate: '2026-09-05'
-  };
+    settlementDate: isPendingInspection ? 'Pending Mandi Weighbridge' : '2026-09-05'
+  });
 
-  const stages = payment.stageHistory || DEFAULT_STAGES;
+  // Calculate dynamic stages based on current payment state
+  const stages = livePayment?.stage_history || (isPendingInspection ? [
+    {
+      stage: 'gate_pass_issued',
+      label: '1. Gate Pass Issued & Slot Booked',
+      hindiLabel: 'गेट पास जारी एवं टोकन आवंटित',
+      description: `Token #${ticket.tokenId} registered for ${ticket.slotDate} at ${ticket.mandiName}. Proceed to Mandi at departure time.`,
+      completed: true,
+      timestamp: `${ticket.slotDate || 'Today'}`
+    },
+    {
+      stage: 'quality_verified',
+      label: '2. Quality Tested & Grade Approved',
+      hindiLabel: 'गुणवत्ता परीक्षण एवं ग्रेड स्वीकृत',
+      description: 'Awaiting truck arrival at Mandi Quality Lab. Assay tests for moisture & FAQ compliance will be done on arrival.',
+      completed: false
+    },
+    {
+      stage: 'paperwork_matched',
+      label: '3. J-Form & Weight Slip Matched',
+      hindiLabel: 'जे-फार्म एवं वजन पर्ची मिलान',
+      description: 'Electronic weight record and statutory J-Form generation pending weighbridge weighing.',
+      completed: false
+    },
+    {
+      stage: 'produce_lifted',
+      label: '4. Produce Lifted from Mandi Storage',
+      hindiLabel: 'उपज मंडी गोदाम से उठाई गई',
+      description: 'State procurement agency transit & physical handover to FCI granary.',
+      completed: false
+    },
+    {
+      stage: 'payment_initiated',
+      label: '5. Payment Batch Initiated via PFMS',
+      hindiLabel: 'पीएफएमएस भुगतान प्रक्रिया आरंभ',
+      description: 'DBT voucher batch creation by District Treasury.',
+      completed: false
+    },
+    {
+      stage: 'payment_credited',
+      label: '6. Payment Credited via DBT (PFMS)',
+      hindiLabel: 'डीबीटी द्वारा बैंक खाते में जमा',
+      description: `Guaranteed credit to ${farmerProfile.bankAccount || 'Bank A/c'} within 48-72 hours of weighment.`,
+      completed: false
+    }
+  ] : (ticket.paymentDetails?.stageHistory || DEFAULT_STAGES));
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>

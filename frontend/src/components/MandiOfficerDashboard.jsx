@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   QrCode, 
@@ -19,6 +19,13 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { TRANSLATIONS } from '../data/translations';
+import { 
+  fetchSlotAvailabilityApi, 
+  submitQualityCheckApi, 
+  pauseGateApi, 
+  resumeGateApi, 
+  advancePaymentStageApi 
+} from '../services/api';
 
 export default function MandiOfficerDashboard({ 
   tickets, 
@@ -37,19 +44,34 @@ export default function MandiOfficerDashboard({
   const [tareWeightInput, setTareWeightInput] = useState(220);
   const [qcSubmittedResult, setQcSubmittedResult] = useState(null);
 
+  const [slotLocks, setSlotLocks] = useState([
+    { window: '08:00 AM - 10:00 AM', booked: 14, max: 15, isFull: false, subSlot: '15-min micro-window active' },
+    { window: '10:00 AM - 01:00 PM', booked: 15, max: 15, isFull: true, subSlot: 'LOCKED - Prevents Herding Jam' },
+    { window: '01:00 PM - 03:00 PM', booked: 6, max: 15, isFull: false, subSlot: '15-min micro-window active' },
+    { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '15-min micro-window active' }
+  ]);
+
+  useEffect(() => {
+    async function loadSlotLocks() {
+      const mandiId = tickets[0]?.mandiId || 'mandi-1';
+      const date = tickets[0]?.slotDate || '2026-09-05';
+      const slots = await fetchSlotAvailabilityApi(mandiId, date);
+      if (slots && slots.length > 0) {
+        setSlotLocks(slots.map(s => ({
+          ...s,
+          subSlot: s.isFull ? 'LOCKED - Prevents Herding Jam' : '15-min micro-window active'
+        })));
+      }
+    }
+    loadSlotLocks();
+  }, [tickets]);
+
   const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
 
   const filteredTickets = tickets.filter(tk => 
     tk.tokenId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tk.farmerName.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const slotLocks = [
-    { window: '08:00 AM - 10:00 AM', booked: 14, max: 15, isFull: false, subSlot: '15-min micro-window active' },
-    { window: '10:00 AM - 01:00 PM', booked: 15, max: 15, isFull: true, subSlot: 'LOCKED - Prevents Herding Jam' },
-    { window: '01:00 PM - 03:00 PM', booked: 6, max: 15, isFull: false, subSlot: '15-min micro-window active' },
-    { window: '03:00 PM - 06:00 PM', booked: 3, max: 15, isFull: false, subSlot: '15-min micro-window active' }
-  ];
 
   // Real-time calculation of 3 outcomes for modal preview
   const netWeightKg = Math.max(0, grossWeightInput - tareWeightInput);
@@ -77,23 +99,57 @@ export default function MandiOfficerDashboard({
     setQcSubmittedResult(null);
   };
 
-  const handleSaveQualityCheck = () => {
+  const handleSaveQualityCheck = async () => {
+    let receiptNo = `JFORM-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    let totalPayout = calculatedTotalPayout;
+
+    try {
+      const apiRes = await submitQualityCheckApi({
+        token_id: selectedTicketForQc.tokenId,
+        moisture_pct: moistureInput,
+        foreign_matter_pct: foreignMatterInput,
+        gross_weight_kg: grossWeightInput,
+        tare_weight_kg: tareWeightInput
+      });
+      if (apiRes && apiRes.evaluation) {
+        receiptNo = apiRes.evaluation.receiptNo || receiptNo;
+        if (apiRes.evaluation.totalPayout !== undefined) {
+          totalPayout = apiRes.evaluation.totalPayout;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend quality check submit error, using client fallback:', e);
+    }
+
     const result = {
       outcome: qcOutcome,
       moisture: moistureInput,
       discountPerQt,
       finalRatePerQt,
-      totalPayout: calculatedTotalPayout,
-      receiptNo: `JFORM-2026-${Math.floor(1000 + Math.random() * 9000)}`
+      totalPayout,
+      receiptNo
     };
     setQcSubmittedResult(result);
+
+    // Update ticket weighbridgeDetails in memory if present
+    if (selectedTicketForQc) {
+      selectedTicketForQc.status = qcOutcome === 'FAIL' ? 'REJECTED' : 'WEIGHED';
+      selectedTicketForQc.weighbridgeDetails = {
+        grossWeightKg: grossWeightInput,
+        tareWeightKg: tareWeightInput,
+        netWeightKg: Math.max(0, grossWeightInput - tareWeightInput),
+        moisturePercent: `${moistureInput}%`,
+        qualityGrade: qcOutcome === 'FAIL' ? 'Rejected' : qcOutcome === 'DISCOUNT' ? 'FAQ Under-Grade' : 'Grade A Superfine',
+        receiptNo
+      };
+    }
 
     // Trigger SMS to Farmer
     const smsMsg = qcOutcome === 'FAIL'
       ? `FasalExpress Rejection Alert: Crop rejected for Token #${selectedTicketForQc.tokenId}. Reason: Moisture content ${moistureInput}% exceeds statutory safety ceiling of 14.0%.`
       : qcOutcome === 'DISCOUNT'
-      ? `FasalExpress Alert: Moisture tested at ${moistureInput}%. FAQ Deduction applied: ₹${discountPerQt}/Qt. Final MSP: ₹${finalRatePerQt}/Qt. Total: ₹${calculatedTotalPayout.toLocaleString('en-IN')}. J-Form #${result.receiptNo}.`
-      : `FasalExpress Alert: Quality Verified (Grade A Superfine). Moisture ${moistureInput}% within 12% limit. Full MSP @ ₹${finalRatePerQt}/Qt. Total: ₹${calculatedTotalPayout.toLocaleString('en-IN')}. J-Form #${result.receiptNo}.`;
+      ? `FasalExpress Alert: Moisture tested at ${moistureInput}%. FAQ Deduction applied: ₹${discountPerQt}/Qt. Final MSP: ₹${finalRatePerQt}/Qt. Total: ₹${totalPayout.toLocaleString('en-IN')}. J-Form #${receiptNo}.`
+      : `FasalExpress Alert: Quality Verified (Grade A Superfine). Moisture ${moistureInput}% within 12% limit. Full MSP @ ₹${finalRatePerQt}/Qt. Total: ₹${totalPayout.toLocaleString('en-IN')}. J-Form #${receiptNo}.`;
 
     onSendSms({
       id: `sms-${Date.now()}`,
@@ -150,16 +206,26 @@ export default function MandiOfficerDashboard({
           
           <button 
             className={gatePaused ? 'btn-gov-primary' : 'btn-gov-outline'}
-            onClick={() => {
-              setGatePaused(!gatePaused);
+            onClick={async () => {
+              const nextState = !gatePaused;
+              setGatePaused(nextState);
+              try {
+                if (nextState) {
+                  await pauseGateApi('mandi-1');
+                } else {
+                  await resumeGateApi('mandi-1');
+                }
+              } catch (err) {
+                console.warn('Gate status toggle API call failed:', err);
+              }
               onSendSms({
                 id: `sms-${Date.now()}`,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 type: 'GATE_PAUSE',
-                title: gatePaused ? '🟢 Gate Resumed' : '🔴 Gate Flow Paused',
-                message: gatePaused 
-                  ? 'FasalExpress Alert: Gate entry resumed at Karnal Mandi.' 
-                  : 'FasalExpress Alert: Gate entry temporarily paused for 15 mins due to inner yard traffic.'
+                title: nextState ? '🔴 Gate Flow Paused' : '🟢 Gate Resumed',
+                message: nextState 
+                  ? 'FasalExpress Alert: Gate entry temporarily paused for 15 mins due to inner yard traffic.'
+                  : 'FasalExpress Alert: Gate entry resumed at Karnal Mandi.'
               });
             }}
             style={{ padding: '14px 24px', fontSize: '1.05rem', fontWeight: 800 }}

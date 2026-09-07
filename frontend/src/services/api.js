@@ -47,6 +47,18 @@ export async function fetchFarmerStatus(farmerId = 'FARM-2026-9842') {
   }
 }
 
+export async function fetchSlotAvailabilityApi(centreId = 'mandi-1', date = '2026-09-05') {
+  try {
+    const res = await fetch(`${API_BASE}/slots/availability?centre_id=${encodeURIComponent(centreId)}&date=${encodeURIComponent(date)}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.slots;
+  } catch (err) {
+    console.warn('API fetchSlotAvailability error, using fallback:', err);
+    return null;
+  }
+}
+
 export async function bookSlotApi(payload) {
   try {
     const res = await fetch(`${API_BASE}/slots/book`, {
@@ -72,6 +84,68 @@ export async function advanceQueueApi(centreId = 'mandi-1') {
   } catch (err) {
     console.warn('API advanceQueue error:', err);
     return { success: false, message: err.message };
+  }
+}
+
+export async function fetchCentreQueueApi(centreId = 'mandi-1') {
+  try {
+    const res = await fetch(`${API_BASE}/centres/${centreId}/queue`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('API fetchCentreQueue error:', err);
+    return null;
+  }
+}
+
+export async function pauseGateApi(centreId = 'mandi-1') {
+  try {
+    const res = await fetch(`${API_BASE}/centres/${centreId}/pause-gate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn('API pauseGate error:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function resumeGateApi(centreId = 'mandi-1') {
+  try {
+    const res = await fetch(`${API_BASE}/centres/${centreId}/resume-gate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn('API resumeGate error:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function submitQualityCheckApi(payload) {
+  try {
+    const res = await fetch(`${API_BASE}/quality-checks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  } catch (err) {
+    console.warn('API submitQualityCheck error:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function fetchPaymentByTokenApi(tokenId) {
+  try {
+    const res = await fetch(`${API_BASE}/payments/by-token/${tokenId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('API fetchPaymentByToken error:', err);
+    return null;
   }
 }
 

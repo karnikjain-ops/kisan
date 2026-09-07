@@ -23,7 +23,9 @@ import {
   fetchFarmerStatus, 
   fetchNotificationsApi, 
   advanceQueueApi, 
-  triggerNotificationApi 
+  triggerNotificationApi,
+  fetchCentres,
+  fetchCrops 
 } from './services/api';
 
 export default function App() {
@@ -44,11 +46,14 @@ export default function App() {
   const [currentLang, setCurrentLang] = useState('en');
   
   const [farmerProfile, setFarmerProfile] = useState(INITIAL_FARMER_PROFILE);
-  const [mandiList] = useState(MANDI_CENTERS);
-  const [cropList] = useState(CROP_LIST);
+  const [mandiList, setMandiList] = useState(MANDI_CENTERS);
+  const [cropList, setCropList] = useState(CROP_LIST);
 
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [smsLogs, setSmsLogs] = useState(INITIAL_SMS_LOGS);
+  
+  const activeTicket = tickets.find(t => t.tokenId === selectedTicketId) || tickets[0];
   
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -67,9 +72,42 @@ export default function App() {
   useEffect(() => {
     async function syncBackendData() {
       try {
+        const centres = await fetchCentres();
+        if (centres && centres.length > 0) {
+          setMandiList(centres);
+        }
+
+        const crops = await fetchCrops();
+        if (crops && crops.length > 0) {
+          setCropList(crops);
+        }
+
         const statusRes = await fetchFarmerStatus(farmerProfile.farmerId);
-        if (statusRes && statusRes.success && statusRes.tickets && statusRes.tickets.length > 0) {
-          setTickets(statusRes.tickets);
+        if (statusRes && statusRes.success) {
+          if (statusRes.farmerProfile) {
+            setFarmerProfile(prev => ({
+              ...prev,
+              ...statusRes.farmerProfile,
+              name: statusRes.farmerProfile.name || prev.name,
+              totalLandAcres: statusRes.farmerProfile.total_land_acres || statusRes.farmerProfile.totalLandAcres || prev.totalLandAcres,
+              village: statusRes.farmerProfile.village || prev.village,
+              phone: statusRes.farmerProfile.phone || prev.phone,
+              bankAccount: statusRes.farmerProfile.bank_account_mock || prev.bankAccount,
+              ifsc: statusRes.farmerProfile.ifsc_mock || prev.ifsc
+            }));
+            setCurrentUser(prev => ({
+              ...prev,
+              name: statusRes.farmerProfile.name || prev.name,
+              totalLandAcres: statusRes.farmerProfile.total_land_acres || statusRes.farmerProfile.totalLandAcres || prev.totalLandAcres,
+              village: statusRes.farmerProfile.village || prev.village,
+              phone: statusRes.farmerProfile.phone || prev.phone,
+              bankAccount: statusRes.farmerProfile.bank_account_mock || prev.bankAccount,
+              ifsc: statusRes.farmerProfile.ifsc_mock || prev.ifsc
+            }));
+          }
+          if (statusRes.tickets && statusRes.tickets.length > 0) {
+            setTickets(statusRes.tickets);
+          }
         }
 
         const notifications = await fetchNotificationsApi(farmerProfile.farmerId);
@@ -84,7 +122,19 @@ export default function App() {
   }, [farmerProfile.farmerId]);
 
   const handleSlotBooked = (newTicket) => {
-    setTickets([newTicket, ...tickets]);
+    setTickets(prev => [newTicket, ...prev]);
+    setSelectedTicketId(newTicket.tokenId);
+
+    // Update mandiList capacity dynamically in frontend state
+    setMandiList(prev => prev.map(m => {
+      if (m.id === newTicket.mandiId) {
+        return {
+          ...m,
+          currentBookedQuintals: (m.currentBookedQuintals || 0) + (newTicket.quantityQuintals || 0)
+        };
+      }
+      return m;
+    }));
     
     const newSms = {
       id: `sms-${Date.now()}`,
@@ -93,7 +143,7 @@ export default function App() {
       title: '✅ Slot Booking Confirmed',
       message: `FasalExpress: Slot Confirmed for ${newTicket.cropName} (${newTicket.quantityQuintals} Qt) at ${newTicket.mandiName} on ${newTicket.slotDate}. Token #${newTicket.tokenId}. Channel: ${newTicket.bookingChannel || 'Web Portal'}`
     };
-    setSmsLogs([newSms, ...smsLogs]);
+    setSmsLogs(prev => [newSms, ...prev]);
   };
 
   const handleAdvanceQueue = async () => {
@@ -112,7 +162,7 @@ export default function App() {
         ...t,
         currentStepIndex: nextStepIndex,
         queuePosition: nextPosition,
-        estimatedWaitMins: Math.max(5, (nextPosition - 1) * 6),
+        estimatedWaitMins: Math.max(5, Math.round(((nextPosition - 1) * 14) / 6)),
         status: nextStepIndex === 0 ? 'CHECKED_IN' : nextStepIndex === 1 ? 'IN_PROGRESS' : nextStepIndex === 2 ? 'WEIGHED' : 'COMPLETED'
       };
     }));
@@ -174,8 +224,10 @@ export default function App() {
 
         {activeRole === 'payment' && (
           <PaymentTracker 
-            ticket={tickets[0]}
+            ticket={activeTicket}
             farmerProfile={farmerProfile}
+            allTickets={tickets}
+            onSelectTicket={setSelectedTicketId}
           />
         )}
 
@@ -188,7 +240,9 @@ export default function App() {
 
         {activeRole === 'queue' && (
           <LiveQueueTracker 
-            ticket={tickets[0]}
+            ticket={activeTicket}
+            allTickets={tickets}
+            onSelectTicket={setSelectedTicketId}
             onAdvanceQueue={handleAdvanceQueue}
             onSimulateSms={() => setActiveRole('sms')}
           />
@@ -218,8 +272,10 @@ export default function App() {
       {/* Payment Quick Sheet at Bottom of Farmer View */}
       {activeRole === 'farmer' && tickets.length > 0 && (
         <PaymentTracker 
-          ticket={tickets[0]}
+          ticket={activeTicket}
           farmerProfile={farmerProfile}
+          allTickets={tickets}
+          onSelectTicket={setSelectedTicketId}
         />
       )}
 

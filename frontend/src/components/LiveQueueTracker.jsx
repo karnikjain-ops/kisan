@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -8,22 +8,38 @@ import {
   CreditCard, 
   AlertCircle, 
   Play, 
-  QrCode,
-  BellRing,
-  ArrowRight,
-  ShieldCheck,
-  Users,
-  TrendingDown,
-  Sparkles,
-  Award
+  QrCode, 
+  BellRing, 
+  ArrowRight, 
+  ShieldCheck, 
+  Users, 
+  TrendingDown, 
+  Sparkles, 
+  Award 
 } from 'lucide-react';
 import { HOURLY_TRAFFIC_HISTORY, STAGE_QUEUE_BREAKDOWN } from '../data/mockData';
+import { fetchCentreQueueApi } from '../services/api';
 
 export default function LiveQueueTracker({ 
   ticket, 
+  allTickets = [],
+  onSelectTicket,
   onAdvanceQueue, 
   onSimulateSms 
 }) {
+  const [liveQueueData, setLiveQueueData] = useState(null);
+
+  useEffect(() => {
+    async function loadLiveQueue() {
+      if (!ticket?.mandiId) return;
+      const data = await fetchCentreQueueApi(ticket.mandiId);
+      if (data && data.success) {
+        setLiveQueueData(data);
+      }
+    }
+    loadLiveQueue();
+  }, [ticket?.mandiId, ticket?.queuePosition, ticket?.currentStepIndex]);
+
   if (!ticket) {
     return (
       <div style={{ padding: '40px 24px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
@@ -45,8 +61,47 @@ export default function LiveQueueTracker({
     { title: '4. DBT Payout Credit', desc: 'Direct Benefit Transfer', icon: CreditCard }
   ];
 
+  const currentlyServing = liveQueueData?.currentlyServing || { tokenId: '#KQ-404', counterNo: ticket.counterNo || 'Counter #1' };
+  const yardStages = liveQueueData?.yardBreakdown?.stages || STAGE_QUEUE_BREAKDOWN;
+  const totalYardTrucks = liveQueueData?.yardBreakdown?.totalTrucks || yardStages.reduce((sum, s) => sum + (s.currentInQueue || 0), 0);
+
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      
+      {/* Multi-Queue / Multi-Token Switcher */}
+      {allTickets && allTickets.length > 1 && (
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', alignSelf: 'center', marginRight: '4px' }}>
+            Switch Queue Token:
+          </span>
+          {allTickets.map(t => {
+            const isSelected = t.tokenId === ticket.tokenId;
+            return (
+              <button
+                key={t.tokenId}
+                onClick={() => onSelectTicket && onSelectTicket(t.tokenId)}
+                style={{
+                  background: isSelected ? 'var(--gov-navy)' : 'var(--gov-card-bg)',
+                  color: isSelected ? '#ffffff' : 'var(--text-primary)',
+                  border: isSelected ? '2px solid var(--gov-navy)' : '1.5px solid var(--gov-border)',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>#{t.tokenId}</span>
+                <span style={{ opacity: 0.8, fontWeight: 600 }}>({t.mandiName?.split(' ')[0] || 'Mandi'})</span>
+                {isSelected && <span style={{ color: '#22c55e' }}>●</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       
       {/* Top Banner: Ticket & Real-Time Position */}
       <div 
@@ -81,9 +136,9 @@ export default function LiveQueueTracker({
           <div style={{ background: '#ffffff', color: '#092543', padding: '16px 24px', borderRadius: '12px', border: '2px solid #092543', textAlign: 'center' }}>
             <span style={{ fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 800 }}>Currently Serving</span>
             <h3 style={{ fontSize: '1.8rem', color: '#c2410c', fontWeight: 900 }}>
-              #KQ-404
+              #{currentlyServing.tokenId?.replace('#', '')}
             </h3>
-            <span style={{ fontSize: '0.82rem', color: '#092543', fontWeight: 800 }}>{ticket.counterNo}</span>
+            <span style={{ fontSize: '0.82rem', color: '#092543', fontWeight: 800 }}>{currentlyServing.counterNo || ticket.counterNo}</span>
           </div>
 
           <div style={{ background: '#dcfce7', color: '#14532d', padding: '16px 24px', borderRadius: '12px', border: '2px solid #16a34a', textAlign: 'center' }}>
@@ -103,17 +158,17 @@ export default function LiveQueueTracker({
             <Users size={20} /> Current Mandi Yard Occupancy (वर्तमान मंडी कतार स्थिति)
           </span>
           <span className="gov-badge badge-green" style={{ background: '#ffffff', color: '#006837', fontWeight: 800 }}>
-            28 Trucks Currently in Mandi
+            {totalYardTrucks} Trucks Currently in Mandi
           </span>
         </div>
 
         <div style={{ padding: '24px' }}>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginBottom: '18px', fontWeight: 600 }}>
-            Real-time count of farmers & trucks currently processing across each stage at Karnal Central Mandi:
+            Real-time count of farmers & trucks currently processing across each stage at {ticket.mandiName || 'Procurement Mandi'}:
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-            {STAGE_QUEUE_BREAKDOWN.map((stg) => (
+            {yardStages.map((stg) => (
               <div 
                 key={stg.stageId}
                 style={{
@@ -121,18 +176,18 @@ export default function LiveQueueTracker({
                   border: '2px solid var(--gov-border)',
                   borderRadius: '12px',
                   padding: '18px',
-                  borderTop: `6px solid ${stg.statusColor}`
+                  borderTop: `6px solid ${stg.statusColor || '#006837'}`
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Stage {stg.stageId}</span>
-                  <span className="gov-badge badge-blue">~{stg.avgMins} mins</span>
+                  <span className="gov-badge badge-blue">~{stg.avgMins || 10} mins</span>
                 </div>
                 <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '2px' }}>{stg.name}</h4>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '10px' }}>{stg.hindiName}</span>
                 
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                  <h2 style={{ fontSize: '2rem', fontWeight: 900, color: stg.statusColor }}>
+                  <h2 style={{ fontSize: '2rem', fontWeight: 900, color: stg.statusColor || '#006837' }}>
                     {stg.currentInQueue}
                   </h2>
                   <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 700 }}>Farmers in line</span>

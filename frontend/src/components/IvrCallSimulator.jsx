@@ -16,6 +16,7 @@ import {
   Megaphone,
   FileCheck
 } from 'lucide-react';
+import { bookSlotApi } from '../services/api';
 import confetti from 'canvas-confetti';
 
 export default function IvrCallSimulator({ onSlotBooked, farmerProfile }) {
@@ -34,7 +35,7 @@ export default function IvrCallSimulator({ onSlotBooked, farmerProfile }) {
     }, 1500);
   };
 
-  const handleKeypress = (key) => {
+  const handleKeypress = async (key) => {
     if (currentStep === 1) {
       if (key === '1') setSelectedCrop('Wheat (गेहूँ)');
       else if (key === '2') setSelectedCrop('Mustard (सरसों)');
@@ -42,24 +43,28 @@ export default function IvrCallSimulator({ onSlotBooked, farmerProfile }) {
       else setSelectedCrop('Wheat (गेहूँ)');
       setCurrentStep(2);
     } else if (currentStep === 2) {
-      if (key === '1') setSelectedSlot('08:00 AM - 10:00 AM');
-      else if (key === '2') setSelectedSlot('01:00 PM - 03:00 PM');
-      else setSelectedSlot('03:00 PM - 06:00 PM');
+      let chosenSlot = '08:00 AM - 10:00 AM';
+      if (key === '1') chosenSlot = '08:00 AM - 10:00 AM';
+      else if (key === '2') chosenSlot = '01:00 PM - 03:00 PM';
+      else chosenSlot = '03:00 PM - 06:00 PM';
+      setSelectedSlot(chosenSlot);
       
+      const cropVal = selectedCrop || 'Wheat (गेहूँ)';
       const randomToken = `KQ-${Math.floor(400 + Math.random() * 200)}`;
-      const newTicket = {
+
+      let newTicket = {
         tokenId: randomToken,
         farmerName: farmerProfile.name,
         farmerId: farmerProfile.farmerId,
         phone: farmerProfile.phone,
         mandiName: selectedMandi,
         mandiId: 'mandi-1',
-        cropName: selectedCrop || 'Wheat (गेहूँ)',
+        cropName: cropVal,
         quantityQuintals: 45,
         mspRate: 2275,
         estimatedPayout: 102375,
         slotDate: '2026-09-05',
-        timeWindow: selectedSlot || '08:00 AM - 10:00 AM',
+        timeWindow: chosenSlot,
         counterNo: 'Counter #2',
         status: 'BOOKED_VIA_IVR',
         currentStepIndex: 0,
@@ -70,6 +75,29 @@ export default function IvrCallSimulator({ onSlotBooked, farmerProfile }) {
         staggeredGateTime: '08:15 AM (15-min Micro Window)',
         bookingChannel: 'IVR Toll-Free Phone Call (155261)'
       };
+
+      try {
+        const apiRes = await bookSlotApi({
+          farmer_id: farmerProfile.farmerId || 'FARM-2026-9842',
+          crop_name: cropVal.includes('Wheat') ? 'Wheat' : cropVal.includes('Mustard') ? 'Mustard' : 'Paddy',
+          centre_id: 'mandi-1',
+          slot_date: '2026-09-05',
+          time_window: chosenSlot,
+          quantity_quintals: 45,
+          transit_distance_km: 12,
+          booking_channel: 'IVR Toll-Free Phone Call (155261)'
+        });
+
+        if (apiRes && apiRes.success && apiRes.ticket) {
+          newTicket = {
+            ...newTicket,
+            ...apiRes.ticket,
+            bookingChannel: 'IVR Toll-Free Phone Call (155261)'
+          };
+        }
+      } catch (err) {
+        console.warn('Backend IVR slot booking failed, using fallback:', err);
+      }
 
       setGeneratedToken(newTicket);
       onSlotBooked(newTicket);
